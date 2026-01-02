@@ -114,7 +114,6 @@ class StreamProcessor:
         """Handle assistant message."""
         for block in msg.content:
             if isinstance(block, TextBlock):
-                logger.info(f"[Agent] {block.text}")
                 yield format_sse_message("assistant_message", block.text)
 
             elif isinstance(block, ToolUseBlock):

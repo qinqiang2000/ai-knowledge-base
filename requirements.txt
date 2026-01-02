@@ -12,3 +12,7 @@ claude-agent-sdk
 # Database (for context data access if needed)
 pymysql>=1.0.0
 tqdm
+
+# CLI tool dependencies
+prompt-toolkit>=3.0.43    # Interactive REPL
+rich>=13.7.0              # Terminal formatting
