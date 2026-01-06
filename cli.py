@@ -390,6 +390,11 @@ async def run_repl():
             renderer.start_response()
             await process_stream(agent_service, request, renderer, state)
 
+        except asyncio.CancelledError:
+            # Interrupt during stream can cancel the prompt, just continue
+            console.print()  # New line after interrupted prompt
+            continue
+
         except KeyboardInterrupt:
             console.print("\n[yellow](使用 /q 退出)[/yellow]\n")
             continue
