@@ -19,8 +19,8 @@ Features:
     - 并发测试（不同session）
     - 自动检测产品询问并自动回复默认产品
     - 超时时保留部分回答
-    - 输出 Excel (.xlsx) + JSON 结果到 tests/results/
-    - Excel 格式支持长文本自动换行，完整内容不截断
+    - 输出 Markdown (.md) + JSON 结果到 tests/results/
+    - Markdown 格式包含简洁表格总览和详细展开区域
 
 测试数据格式：
     每行一个问题，支持 - 或 * 前缀，# 开头为注释
@@ -41,12 +41,6 @@ from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
-try:
-    from openpyxl import Workbook
-    from openpyxl.styles import Font, Alignment, PatternFill
-    XLSX_AVAILABLE = True
-except ImportError:
-    XLSX_AVAILABLE = False
 
 # 确保项目根目录在 Python 路径中
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -99,60 +93,13 @@ logger = logging.getLogger(__name__)
 class TestResult:
     """单个测试结果"""
     question: str
-    answer: str = ""  # 完整回答（向后兼容）
-    thinking: str = ""  # 思考过程
-    final_answer: str = ""  # 最终回答
+    answer: str = ""  # 完整回答
     session_id: str = ""
     rounds: int = 1  # 对话轮数
     duration_ms: float = 0
     status: str = "pending"  # pending, success, error, needs_product
     error: str = ""
     product_selected: str = ""  # 如果触发了产品选择
-
-
-# 最终回答的分隔标记（按优先级排序）
-FINAL_ANSWER_MARKERS = [
-    "## 核心结论",
-    "## 最终回答",
-    "## 总结",
-    "## 结论",
-    "**核心结论**",
-    "**最终回答**",
-    "**总结**",
-    "**结论**",
-    "根据知识库",
-    "根据文档",
-]
-
-
-def split_thinking_and_answer(full_answer: str) -> tuple[str, str]:
-    """将完整回答分割为思考过程和最终回答
-
-    Returns:
-        (thinking, final_answer) 元组
-    """
-    if not full_answer:
-        return "", ""
-
-    # 尝试按标记分割
-    for marker in FINAL_ANSWER_MARKERS:
-        if marker in full_answer:
-            idx = full_answer.find(marker)
-            thinking = full_answer[:idx].strip()
-            final_answer = full_answer[idx:].strip()
-            return thinking, final_answer
-
-    # 如果没有找到标记，尝试按"---"分隔符分割（多轮对话）
-    if "\n---\n" in full_answer:
-        parts = full_answer.split("\n---\n")
-        if len(parts) >= 2:
-            # 最后一部分通常是最终回答
-            thinking = "\n---\n".join(parts[:-1])
-            final_answer = parts[-1]
-            return thinking.strip(), final_answer.strip()
-
-    # 无法分割，全部作为最终回答
-    return "", full_answer
 
 
 # 产品选择检测模式 - 只匹配明确的询问，避免匹配陈述句
@@ -258,10 +205,6 @@ class TestRunner:
             if partial:
                 answer += f"\n[{status.upper()} - 回答不完整]"
             self.result.answer = answer
-            # 分离思考过程和最终回答
-            thinking, final_answer = split_thinking_and_answer(answer)
-            self.result.thinking = thinking
-            self.result.final_answer = final_answer
 
         self.result.status = status
         self.result.error = error
@@ -365,6 +308,50 @@ class TestRunner:
             return self.finalize_result("error", str(e), partial=True)
 
 
+def escape_md(text: str) -> str:
+    """转义 Markdown 表格特殊字符，并将换行符替换为 <br>"""
+    if not text:
+        return ""
+    # 替换管道符和换行
+    text = text.replace("|", "\\|").replace("\n", "<br>")
+    return text
+
+
+class MarkdownWriter:
+    """增量写入 Markdown 结果的工具类"""
+
+    def __init__(self, output_dir: Path, name: str):
+        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.md_path = output_dir / f"{name}_{self.timestamp}.md"
+        self._initialized = False
+
+    def _ensure_header(self):
+        """确保文件已创建并写入表头"""
+        if self._initialized:
+            return
+        with open(self.md_path, 'w', encoding='utf-8') as f:
+            f.write("| 序号 | 问题 | 回答 | 耗时(s) | 错误信息 |\n")
+            f.write("|------|------|------|---------|----------|\n")
+        self._initialized = True
+        logger.info(f"Markdown 文件已创建: {self.md_path}")
+
+    def append_result(self, idx: int, result: TestResult):
+        """追加单个测试结果到 Markdown 文件"""
+        self._ensure_header()
+        row = [
+            str(idx),
+            escape_md(result.question),
+            escape_md(result.answer),
+            f"{result.duration_ms/1000:.1f}",
+            escape_md(result.error)
+        ]
+        with open(self.md_path, 'a', encoding='utf-8') as f:
+            f.write(f"| {' | '.join(row)} |\n")
+
+    def get_path(self) -> Path:
+        return self.md_path
+
+
 async def run_single_test(
     agent_service,
     question: str,
@@ -378,13 +365,25 @@ async def run_single_test(
 
 async def run_batch_tests(
     questions: list[str],
-    concurrency: int = 5,
+    concurrency: int = 1,
     default_product: str = "旗舰版发票云",
-    timeout: float = 300.0
+    timeout: float = 300.0,
+    md_writer: MarkdownWriter = None
 ) -> list[TestResult]:
-    """并发运行批量测试"""
+    """并发运行批量测试
+
+    Args:
+        questions: 测试问题列表
+        concurrency: 并发数
+        default_product: 默认产品选择
+        timeout: 单个测试超时时间（秒）
+        md_writer: Markdown 增量写入器，每完成一个任务立即写入
+    """
     agent_service = get_agent_service()
     semaphore = asyncio.Semaphore(concurrency)
+
+    # 用于保护 Markdown 写入的锁（避免并发写入冲突）
+    write_lock = asyncio.Lock()
 
     def log_progress(msg: str):
         """同时输出到控制台和日志文件"""
@@ -402,21 +401,25 @@ async def run_batch_tests(
                 result = await asyncio.wait_for(runner.run(), timeout=timeout)
                 status_icon = "✓" if result.status == "success" else ("⏱" if result.status == "timeout" else "✗")
                 log_progress(f"{task_id} {status_icon} 完成 ({result.duration_ms/1000:.1f}s, {result.rounds}轮)")
-                return idx, result
             except asyncio.TimeoutError:
                 # 超时时，从 runner 中提取部分结果
                 log_progress(f"{task_id} ⏱ 超时 ({timeout}s)")
                 result = runner.finalize_result("timeout", f"Timeout after {timeout}s", partial=True)
-                return idx, result
             except asyncio.CancelledError:
                 log_progress(f"{task_id} ⏱ 取消")
                 result = runner.finalize_result("timeout", "Task cancelled", partial=True)
-                return idx, result
             except Exception as e:
                 log_progress(f"{task_id} ✗ 异常: {e}")
                 logger.exception(f"{task_id} exception")
                 result = runner.finalize_result("error", str(e), partial=True)
-                return idx, result
+
+            # 立即写入 Markdown（如果有 writer）
+            if md_writer:
+                async with write_lock:
+                    md_writer.append_result(idx + 1, result)
+                    log_progress(f"{task_id} 📝 已写入 Markdown")
+
+            return idx, result
 
     # 创建所有任务
     tasks = [
@@ -444,109 +447,56 @@ async def run_batch_tests(
                 status="error",
                 error="Task failed unexpectedly"
             )
+            # 补写失败的结果到 Markdown
+            if md_writer:
+                md_writer.append_result(idx + 1, results[idx])
 
     return results
 
 
-def save_results_xlsx(results: list[TestResult], output_dir: Path, name: str) -> Path:
-    """保存测试结果到 Excel (.xlsx) 格式 - 完整内容，自动换行"""
-    if not XLSX_AVAILABLE:
-        print("⚠️  openpyxl 未安装，跳过 xlsx 输出。安装命令: pip install openpyxl")
-        return None
-
+def save_results_markdown(results: list[TestResult], output_dir: Path, name: str) -> Path:
+    """保存测试结果到 Markdown 表格格式（一次性写入，用于最终汇总）"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    xlsx_path = output_dir / f"{name}_{timestamp}.xlsx"
+    md_path = output_dir / f"{name}_{timestamp}.md"
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "测试结果"
+    with open(md_path, 'w', encoding='utf-8') as f:
+        # 表头
+        f.write("| 序号 | 问题 | 回答 | 耗时(s) | 错误信息 |\n")
+        f.write("|------|------|------|---------|----------|\n")
 
-    # 定义列宽（字符数）
-    column_widths = {
-        'A': 8,   # 序号
-        'B': 40,  # 问题
-        'C': 80,  # 最终回答
-        'D': 80,  # 思考过程
-        'E': 12,  # 状态
-        'F': 12,  # 耗时
-        'G': 8,   # 轮数
-        'H': 15,  # 选择的产品
-        'I': 30   # 错误信息
-    }
+        # 数据行
+        for idx, r in enumerate(results, 1):
+            row = [
+                str(idx),
+                escape_md(r.question),
+                escape_md(r.answer),
+                f"{r.duration_ms/1000:.1f}",
+                escape_md(r.error)
+            ]
 
-    # 设置列宽
-    for col, width in column_widths.items():
-        ws.column_dimensions[col].width = width
+            f.write(f"| {' | '.join(row)} |\n")
 
-    # 表头样式
-    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=11)
-    header_alignment = Alignment(horizontal="center", vertical="center")
+    print(f"✅ Markdown 结果已保存: {md_path}")
+    logger.info(f"Markdown 结果已保存: {md_path}")
 
-    # 写入表头
-    headers = ["序号", "问题", "最终回答", "思考过程", "状态", "耗时(s)", "轮数", "选择的产品", "错误信息"]
-    for col_idx, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_idx, value=header)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = header_alignment
-
-    # 内容样式
-    content_alignment = Alignment(
-        horizontal="left",
-        vertical="top",
-        wrap_text=True  # 自动换行
-    )
-
-    # 写入数据
-    for idx, r in enumerate(results, 1):
-        row_idx = idx + 1
-
-        # 最终回答优先显示，如果为空则显示完整回答
-        final = r.final_answer if r.final_answer else r.answer
-
-        # 写入各列数据
-        ws.cell(row=row_idx, column=1, value=idx)
-        ws.cell(row=row_idx, column=2, value=r.question)
-        ws.cell(row=row_idx, column=3, value=final)  # 完整内容，不截断
-        ws.cell(row=row_idx, column=4, value=r.thinking)  # 完整内容，不截断
-        ws.cell(row=row_idx, column=5, value=r.status)
-        ws.cell(row=row_idx, column=6, value=f"{r.duration_ms/1000:.1f}")
-        ws.cell(row=row_idx, column=7, value=r.rounds)
-        ws.cell(row=row_idx, column=8, value=r.product_selected)
-        ws.cell(row=row_idx, column=9, value=r.error)
-
-        # 应用样式到所有内容单元格
-        for col_idx in range(1, 10):
-            cell = ws.cell(row=row_idx, column=col_idx)
-            cell.alignment = content_alignment
-
-        # 状态列居中
-        ws.cell(row=row_idx, column=5).alignment = Alignment(horizontal="center", vertical="center")
-
-        # 根据状态设置颜色
-        status_cell = ws.cell(row=row_idx, column=5)
-        if r.status == "success":
-            status_cell.font = Font(color="008000")  # 绿色
-        elif r.status == "timeout":
-            status_cell.font = Font(color="FF8C00")  # 橙色
-        elif r.status == "error":
-            status_cell.font = Font(color="FF0000")  # 红色
-
-    # 冻结首行
-    ws.freeze_panes = "A2"
-
-    # 保存文件
-    wb.save(xlsx_path)
-    print(f"✅ Excel 结果已保存: {xlsx_path}")
-    logger.info(f"Excel 结果已保存: {xlsx_path}")
-
-    return xlsx_path
+    return md_path
 
 
-def save_results(results: list[TestResult], output_dir: Path, name: str):
-    """保存测试结果到 JSON 和 Excel"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+def save_results(results: list[TestResult], output_dir: Path, name: str, md_writer: MarkdownWriter = None):
+    """保存测试结果到 JSON（Markdown 已通过 md_writer 增量写入）
+
+    Args:
+        results: 测试结果列表
+        output_dir: 输出目录
+        name: 文件名前缀
+        md_writer: 已使用的 Markdown 写入器（用于获取文件路径）
+    """
+    # 使用 md_writer 的时间戳保持一致，否则生成新的
+    if md_writer:
+        timestamp = md_writer.timestamp
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     base_name = f"{name}_{timestamp}"
 
     # 保存 JSON
@@ -556,8 +506,11 @@ def save_results(results: list[TestResult], output_dir: Path, name: str):
     print(f"JSON 结果已保存: {json_path}")
     logger.info(f"JSON 结果已保存: {json_path}")
 
-    # 保存 Excel (支持长文本和自动换行)
-    save_results_xlsx(results, output_dir, name)
+    # 如果没有 md_writer，则一次性保存 Markdown
+    if md_writer:
+        print(f"✅ Markdown 结果已保存: {md_writer.get_path()}")
+    else:
+        save_results_markdown(results, output_dir, name)
 
     # 打印摘要
     success = sum(1 for r in results if r.status == "success")
@@ -579,7 +532,7 @@ def save_results(results: list[TestResult], output_dir: Path, name: str):
 async def main():
     parser = argparse.ArgumentParser(description="批量测试 customer-service agent")
     parser.add_argument("input_file", help="测试问题文件路径")
-    parser.add_argument("--concurrency", "-c", type=int, default=5, help="并发数 (默认: 5)")
+    parser.add_argument("--concurrency", "-c", type=int, default=1, help="并发数 (默认: 1)")
     parser.add_argument("--default-product", "-p", default="旗舰版发票云",
                         help="默认产品选择 (默认: 旗舰版发票云)")
     parser.add_argument("--timeout", "-t", type=float, default=360.0, help="单个测试超时(秒)，默认360秒")
@@ -607,16 +560,22 @@ async def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 运行测试
+    # 创建 Markdown 增量写入器
+    md_writer = MarkdownWriter(output_dir, input_path.stem)
+    print(f"📝 Markdown 结果将实时写入: {md_writer.get_path()}")
+    print()
+
+    # 运行测试（每完成一个任务立即写入 Markdown）
     results = await run_batch_tests(
         questions,
         concurrency=args.concurrency,
         default_product=args.default_product,
-        timeout=args.timeout
+        timeout=args.timeout,
+        md_writer=md_writer
     )
 
-    # 保存结果
-    save_results(results, output_dir, input_path.stem)
+    # 保存 JSON 结果
+    save_results(results, output_dir, input_path.stem, md_writer=md_writer)
 
 
 if __name__ == "__main__":
