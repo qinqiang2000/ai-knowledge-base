@@ -1,6 +1,7 @@
 """Yunzhijia (云之家) message handler."""
 
 import asyncio
+import json
 import logging
 from typing import Dict
 
@@ -66,21 +67,24 @@ class YunzhijiaHandler:
                 event_type = event.get("event")
 
                 if event_type == "session_created":
-                    # 更新会话映射
-                    new_session_id = event["data"]["session_id"]
+                    # 更新会话映射 - 解析 JSON 数据
+                    data = json.loads(event["data"])
+                    new_session_id = data["session_id"]
                     self.session_map[yzj_session_id] = new_session_id
                     logger.info(f"[YZJ] Session mapping updated: {yzj_session_id} -> {new_session_id}")
 
                 elif event_type == "assistant_message":
-                    # 实时发送每条消息
-                    content = event["data"]
+                    # 实时发送每条消息 - 解析 JSON 数据
+                    data = json.loads(event["data"])
+                    content = data.get("content", "")
                     if content and content.strip():
                         message_count += 1
                         await self._send_message(yzj_token, msg.operatorOpenid, content)
                         logger.info(f"[YZJ] Sent message #{message_count} for session: {yzj_session_id}")
 
                 elif event_type == "result":
-                    result_data = event.get("data", {})
+                    # 解析 JSON 数据
+                    result_data = json.loads(event.get("data", "{}"))
                     logger.info(
                         f"[YZJ] Agent completed: session={result_data.get('session_id')}, "
                         f"duration={result_data.get('duration_ms')}ms, "
@@ -89,7 +93,8 @@ class YunzhijiaHandler:
                     )
 
                 elif event_type == "error":
-                    error_data = event.get("data", {})
+                    # 解析 JSON 数据
+                    error_data = json.loads(event.get("data", "{}"))
                     logger.error(f"[YZJ] Agent error: {error_data.get('message')}")
                     await self._send_message(
                         yzj_token,
