@@ -176,6 +176,8 @@ start_service() {
         echo ""
 
         # Automatically tail the log file
+        # Use trap to handle Ctrl+C gracefully - only stops tail, not the service
+        trap 'print_info "Stopped viewing logs. Service continues running."; exit 0' INT
         tail -f "$LOG_FILE"
     else
         print_error "Failed to start service"
