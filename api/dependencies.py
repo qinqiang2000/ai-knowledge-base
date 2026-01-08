@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 _session_service_instance = None
 _config_service_instance = None
 _agent_service_instance = None
+_yunzhijia_handler_instance = None
 
 
 def get_session_service() -> InMemorySessionService:
@@ -46,12 +47,24 @@ def get_agent_service() -> AgentService:
     return _agent_service_instance
 
 
+def get_yunzhijia_handler():
+    """Get Yunzhijia handler (singleton)."""
+    global _yunzhijia_handler_instance
+    if _yunzhijia_handler_instance is None:
+        from api.handlers.yunzhijia_handler import YunzhijiaHandler
+        agent_service = get_agent_service()
+        _yunzhijia_handler_instance = YunzhijiaHandler(agent_service)
+        logger.info("Created YunzhijiaHandler instance")
+    return _yunzhijia_handler_instance
+
+
 # Test utility function (for unit testing - resets all singletons)
 def reset_services():
     """Reset all service instances (only for testing)."""
-    global _session_service_instance, _config_service_instance, _agent_service_instance
+    global _session_service_instance, _config_service_instance, _agent_service_instance, _yunzhijia_handler_instance
 
     _session_service_instance = None
     _config_service_instance = None
     _agent_service_instance = None
+    _yunzhijia_handler_instance = None
     logger.info("Reset all service instances")

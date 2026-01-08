@@ -24,6 +24,7 @@ from fastapi.responses import FileResponse
 from api.endpoints import router
 from api.customer_service import router as customer_service_router
 from api.admin import admin_router
+from api.yunzhijia import router as yunzhijia_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -50,6 +51,7 @@ if static_path.exists():
 app.include_router(router)  # Generic /api endpoints
 app.include_router(customer_service_router)  # /api/customer-service endpoints
 app.include_router(admin_router)  # /admin endpoints
+app.include_router(yunzhijia_router)  # /yzj/* endpoints (云之家集成)
 
 
 @app.get("/")
