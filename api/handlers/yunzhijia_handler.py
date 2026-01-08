@@ -3,8 +3,9 @@
 import asyncio
 import json
 import logging
+import os
 import re
-from typing import Dict
+from typing import Dict, List
 
 import aiohttp
 
@@ -28,11 +29,14 @@ class YunzhijiaHandler:
 
     NOTIFY_URL = "https://www.yunzhijia.com/gateway/robot/webhook/send?yzjtype=0&yzjtoken={}"
 
-    # 停止命令关键词（不区分大小写）
+    # 停止命令配置
     STOP_KEYWORDS = ["停止", "stop", "取消", "cancel"]
-
-    # 停止命令的最大长度（避免误伤）
     MAX_STOP_COMMAND_LENGTH = 10
+
+    # 图片卡片配置
+    CARD_NOTICE_TEMPLATE_ID = os.getenv("YZJ_CARD_TEMPLATE_ID", "")  # 云之家卡片模板 ID
+    MAX_IMG_NUM_IN_CARD_NOTICE = int(os.getenv("YZJ_MAX_IMG_PER_CARD", "3"))  # 每个卡片最大图片数
+    SERVICE_BASE_URL = os.getenv("SERVICE_BASE_URL", "http://localhost:9090")  # 服务基础 URL
 
     def __init__(self, agent_service: AgentService, session_service: SessionService):
         """初始化云之家处理器
@@ -191,16 +195,26 @@ class YunzhijiaHandler:
             )
 
     async def _send_message(self, yzj_token: str, operator_openid: str, content: str):
-        """发送消息到云之家
+        """发送消息到云之家（支持图片）
 
         Args:
             yzj_token: 云之家机器人 token
-            operator_openid: 操作人 OpenID（用于定向回复）
-            content: 消息内容
+            operator_openid: 操作人 OpenID
+            content: 消息内容（可能包含 markdown 图片）
         """
+        from api.utils.image_utils import extract_images_from_content
+
+        # 提取图片并清理内容
+        cleaned_content, img_urls = extract_images_from_content(content, self.SERVICE_BASE_URL)
+
+        # 如果有图片，提示用户
+        if img_urls:
+            cleaned_content += "\n\n（具体图片请查看下方消息）"
+
+        # 发送文本消息
         url = self.NOTIFY_URL.format(yzj_token)
         data = {
-            "content": content,
+            "content": cleaned_content,
             "notifyParams": [{"type": "openIds", "values": [operator_openid]}]
         }
 
@@ -208,15 +222,86 @@ class YunzhijiaHandler:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=data) as response:
                     if response.status == 200:
-                        logger.info(f"[YZJ] Message sent successfully to {operator_openid}")
+                        logger.info(f"[YZJ] Text message sent to {operator_openid}")
                     else:
                         response_text = await response.text()
-                        logger.error(
-                            f"[YZJ] Failed to send message: status={response.status}, "
-                            f"response={response_text}"
-                        )
+                        logger.error(f"[YZJ] Failed to send message: {response_text}")
         except Exception as e:
             logger.error(f"[YZJ] Error sending message: {e}", exc_info=True)
+
+        # 发送图片卡片
+        if img_urls:
+            await self._send_card_notice(yzj_token, operator_openid, img_urls)
+
+    async def _send_card_notice(
+        self,
+        yzj_token: str,
+        operator_openid: str,
+        img_urls: List[str]
+    ):
+        """发送云之家图片卡片消息
+
+        Args:
+            yzj_token: 云之家机器人 token
+            operator_openid: 操作人 OpenID
+            img_urls: 图片 URL 列表
+        """
+        if not img_urls or not self.CARD_NOTICE_TEMPLATE_ID:
+            logger.warning("[YZJ] No images or card template not configured")
+            return
+
+        img_num = len(img_urls)
+        card_num = (img_num + self.MAX_IMG_NUM_IN_CARD_NOTICE - 1) // self.MAX_IMG_NUM_IN_CARD_NOTICE
+
+        url = self.NOTIFY_URL.format(yzj_token)
+
+        for i in range(card_num):
+            data_content = self._gen_card_notice_data_content(img_urls, i)
+
+            payload = {
+                "msgType": 2,  # 卡片消息
+                "param": {
+                    "baseInfo": {
+                        "templateId": self.CARD_NOTICE_TEMPLATE_ID,
+                        "dataContent": str(data_content)
+                    }
+                },
+                "notifyParams": [{"type": "openIds", "values": [operator_openid]}]
+            }
+
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, json=payload) as response:
+                        if response.status == 200:
+                            logger.info(f"[YZJ] Card notice sent successfully, card {i+1}/{card_num}")
+                        else:
+                            response_text = await response.text()
+                            logger.error(f"[YZJ] Failed to send card notice: {response_text}")
+            except Exception as e:
+                logger.error(f"[YZJ] Error sending card notice: {e}", exc_info=True)
+
+    def _gen_card_notice_data_content(self, img_urls: List[str], card_index: int) -> dict:
+        """构建卡片消息 data_content
+
+        Args:
+            img_urls: 图片 URL 列表
+            card_index: 当前卡片索引
+
+        Returns:
+            卡片数据字典
+        """
+        data_content = {}
+        start_idx = card_index * self.MAX_IMG_NUM_IN_CARD_NOTICE
+        end_idx = min(start_idx + self.MAX_IMG_NUM_IN_CARD_NOTICE, len(img_urls))
+
+        for j, idx in enumerate(range(start_idx, end_idx)):
+            img_url = img_urls[idx]
+            if j == 0:
+                data_content["bigImageUrl"] = img_url
+            else:
+                data_content[f"bigImage{j}Url"] = img_url
+
+        return data_content
 
     def get_session_stats(self) -> dict:
         """获取会话统计信息

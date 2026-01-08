@@ -47,6 +47,12 @@ static_path = Path(__file__).parent / "static"
 if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
+# Mount knowledge base assets for image access
+kb_assets_path = Path(__file__).parent / "data" / "kb" / "产品与交付知识" / "assets"
+if kb_assets_path.exists():
+    app.mount("/kb/assets", StaticFiles(directory=str(kb_assets_path)), name="kb_assets")
+    logger.info(f"Mounted KB assets at /kb/assets")
+
 # Include API routers
 app.include_router(router)  # Generic /api endpoints
 app.include_router(customer_service_router)  # /api/customer-service endpoints
