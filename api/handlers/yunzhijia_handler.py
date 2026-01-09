@@ -43,6 +43,9 @@ class YunzhijiaHandler:
     MAX_IMG_NUM_IN_CARD_NOTICE = int(os.getenv("YZJ_MAX_IMG_PER_CARD", "3"))  # 每个卡片最大图片数
     SERVICE_BASE_URL = os.getenv("SERVICE_BASE_URL", "http://localhost:9090")  # 服务基础 URL
 
+    # 调试配置
+    VERBOSE = os.getenv("YZJ_VERBOSE", "false").lower() == "true"
+
     # FAQ 配置：预定义问答，不走 agent（支持多个触发关键词）
     FAQ_MAP = {
         "你好，你能做什么呢?": '"0幻觉"回答发票云知识库相关问题',
@@ -323,25 +326,34 @@ class YunzhijiaHandler:
                     # 提取标签内容（过滤中间思考过程）
                     data = json.loads(event["data"])
                     content = data.get("content", "")
+                    
                     if content:
-                        # 提取 <ask> 标签（询问用户，需要立即发送）
-                        asks = self._extract_asks(content)
-                        for ask in asks:
-                            # 追加 @机器人 回复提示
-                            ask_with_hint = f"{ask}\n\n【注】请 {robot_name} 回复"
+                        if self.VERBOSE:
+                            # 调试模式：直接发送原始消息，不进行过滤和累积
                             message_count += 1
-                            await self._send_message(yzj_token, msg.operatorOpenid, ask_with_hint)
-                            logger.info(f"[YZJ] Sent ask #{message_count} for session: {yzj_session_id}")
+                            await self._send_message(yzj_token, msg.operatorOpenid, content)
+                            logger.info(f"[YZJ] Sent raw verbose message #{message_count}")
+                        else:
+                            # 正常模式：只提取 <ask> 和 <reply>
+                            
+                            # 提取 <ask> 标签（询问用户，需要立即发送）
+                            asks = self._extract_asks(content)
+                            for ask in asks:
+                                # 追加 @机器人 回复提示
+                                ask_with_hint = f"{ask}\n\n【注】请 {robot_name} 回复"
+                                message_count += 1
+                                await self._send_message(yzj_token, msg.operatorOpenid, ask_with_hint)
+                                logger.info(f"[YZJ] Sent ask #{message_count} for session: {yzj_session_id}")
 
-                        # 提取 <reply> 标签（最终答案，累积后发送）
-                        replies = self._extract_replies(content)
-                        if replies:
-                            reply_buffer.extend(replies)
-                            logger.info(f"[YZJ] Extracted {len(replies)} reply(s) for session: {yzj_session_id}")
-                        
-                        # 无标签内容记录为过滤（用于调试）
-                        if not asks and not replies:
-                            logger.debug(f"[YZJ] Filtered thinking content: {content[:100]}...")
+                            # 提取 <reply> 标签（最终答案，累积后发送）
+                            replies = self._extract_replies(content)
+                            if replies:
+                                reply_buffer.extend(replies)
+                                logger.info(f"[YZJ] Extracted {len(replies)} reply(s) for session: {yzj_session_id}")
+                            
+                            # 无标签内容记录为过滤（用于调试）
+                            if not asks and not replies:
+                                logger.debug(f"[YZJ] Filtered thinking content: {content[:100]}...")
 
                         # 更新会话活动时间
                         if agent_session_id:
