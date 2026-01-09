@@ -202,15 +202,6 @@ class YunzhijiaHandler:
                         f"messages_sent={message_count}"
                     )
 
-                    # 如果有消息发送，添加继续咨询的引导
-                    if message_count > 0 and robot_name:
-                        await self._send_message(
-                            yzj_token,
-                            msg.operatorOpenid,
-                            f"有其他问题欢迎继续咨询（{robot_name} 回复）"
-                        )
-                        logger.info(f"[YZJ] Sent guidance message for session: {yzj_session_id}")
-
                 elif event_type == "error":
                     # 解析 JSON 数据
                     error_data = json.loads(event.get("data", "{}"))
