@@ -99,6 +99,7 @@ class YunzhijiaHandler:
             yzj_token: 云之家机器人 token
         """
         yzj_session_id = msg.sessionId
+        logger.info(f"[YZJ] Received message: {msg.model_dump()}")
         logger.info(f"[YZJ] Processing message: session={yzj_session_id}, content={msg.content[:50]}...")
 
         try:
