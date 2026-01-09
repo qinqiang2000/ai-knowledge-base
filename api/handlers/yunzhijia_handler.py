@@ -83,7 +83,7 @@ class YunzhijiaHandler:
         """从消息内容中提取 <reply> 标签内的内容
 
         用于过滤 Agent 的中间思考过程，只保留面向用户的最终回复。
-        SKILL 中规定所有面向用户的内容必须包裹在 <reply> 标签中。
+        SKILL 中规定最终答案必须包裹在 <reply> 标签中。
 
         Args:
             content: Agent 输出的消息内容
@@ -91,11 +91,24 @@ class YunzhijiaHandler:
         Returns:
             List[str]: 提取的回复列表（可能有多个 <reply> 标签）
         """
-        # 使用正则提取 <reply>...</reply> 之间的内容
-        # re.DOTALL 使 . 匹配换行符
         pattern = r'<reply>(.*?)</reply>'
         matches = re.findall(pattern, content, re.DOTALL)
-        # 去除每段回复的首尾空白
+        return [m.strip() for m in matches if m.strip()]
+
+    def _extract_asks(self, content: str) -> List[str]:
+        """从消息内容中提取 <ask> 标签内的内容
+
+        用于提取需要用户回复的交互式问题（如产品选择、追问确认）。
+        SKILL 中规定询问用户的内容必须包裹在 <ask> 标签中。
+
+        Args:
+            content: Agent 输出的消息内容
+
+        Returns:
+            List[str]: 提取的问题列表（可能有多个 <ask> 标签）
+        """
+        pattern = r'<ask>(.*?)</ask>'
+        matches = re.findall(pattern, content, re.DOTALL)
         return [m.strip() for m in matches if m.strip()]
 
     def _is_stop_command(self, content: str) -> bool:
@@ -307,16 +320,27 @@ class YunzhijiaHandler:
                     logger.info(f"[YZJ] Session mapping updated: {yzj_session_id} -> {new_session_id}")
 
                 elif event_type == "assistant_message":
-                    # 提取 <reply> 标签内容（过滤中间思考过程）
+                    # 提取标签内容（过滤中间思考过程）
                     data = json.loads(event["data"])
                     content = data.get("content", "")
                     if content:
+                        # 提取 <ask> 标签（询问用户，需要立即发送）
+                        asks = self._extract_asks(content)
+                        for ask in asks:
+                            # 追加 @机器人 回复提示
+                            ask_with_hint = f"{ask}\n\n【注】请 {robot_name} 回复"
+                            message_count += 1
+                            await self._send_message(yzj_token, msg.operatorOpenid, ask_with_hint)
+                            logger.info(f"[YZJ] Sent ask #{message_count} for session: {yzj_session_id}")
+
+                        # 提取 <reply> 标签（最终答案，累积后发送）
                         replies = self._extract_replies(content)
                         if replies:
                             reply_buffer.extend(replies)
                             logger.info(f"[YZJ] Extracted {len(replies)} reply(s) for session: {yzj_session_id}")
-                        else:
-                            # 记录被过滤的内容（用于调试）
+                        
+                        # 无标签内容记录为过滤（用于调试）
+                        if not asks and not replies:
                             logger.debug(f"[YZJ] Filtered thinking content: {content[:100]}...")
 
                         # 更新会话活动时间
@@ -524,7 +548,7 @@ class YunzhijiaHandler:
 
         lines.append("")
         if robot_name:
-            lines.append(f"请选项编号或文字. 【注】不可直接回复本消息，需 @{robot_name} 回复")
+            lines.append(f"请选项编号或文字. 【注】不可直接回复本消息，需 {robot_name} 回复")
         else:
             lines.append("请选项编号或文字. 【注】不可直接回复本消息")
 

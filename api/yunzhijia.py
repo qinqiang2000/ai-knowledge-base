@@ -67,7 +67,7 @@ async def yzj_chat(
         "success": True,
         "data": {
             "type": 2,
-            "content": f"收到，开始深度探索..."
+            "content": f"收到，开始deep research, 我被配置为不输出探索过程，请耐心等待..."
         }
     })
 
