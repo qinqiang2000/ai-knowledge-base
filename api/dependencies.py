@@ -51,7 +51,7 @@ def get_yunzhijia_handler():
     """Get Yunzhijia handler (singleton)."""
     global _yunzhijia_handler_instance
     if _yunzhijia_handler_instance is None:
-        from api.handlers.yunzhijia_handler import YunzhijiaHandler
+        from api.handlers.yunzhijia import YunzhijiaHandler
         agent_service = get_agent_service()
         session_service = get_session_service()
         _yunzhijia_handler_instance = YunzhijiaHandler(agent_service, session_service)

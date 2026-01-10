@@ -111,6 +111,22 @@ class ConfigService:
     - Supports dependency injection (not global singleton)
     """
 
+    # 环境变量映射字典（数据驱动配置）
+    ENV_KEY_MAPPING = {
+        # Claude SDK基础配置
+        "ANTHROPIC_BASE_URL": lambda c: c.base_url,
+        "ANTHROPIC_AUTH_TOKEN": lambda c: c.get_auth_token(),
+        "ANTHROPIC_API_KEY": lambda c: c.get_auth_token(),
+        "API_TIMEOUT_MS": lambda c: str(c.timeout_ms),
+
+        # 可选模型配置
+        "ANTHROPIC_MODEL": lambda c: c.model,
+        "ANTHROPIC_SMALL_FAST_MODEL": lambda c: c.small_fast_model,
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": lambda c: c.sonnet_model,
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": lambda c: c.opus_model,
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": lambda c: c.haiku_model,
+    }
+
     def __init__(self, default_config: str = DEFAULT_CONFIG):
         """
         Args:
@@ -194,19 +210,24 @@ class ConfigService:
 
     def _apply_config(self, config: ModelConfig):
         """Apply configuration to environment variables (internal method)."""
-        # Basic configuration
-        os.environ["ANTHROPIC_BASE_URL"] = config.base_url
-        os.environ["ANTHROPIC_AUTH_TOKEN"] = config.get_auth_token()
-        os.environ["ANTHROPIC_API_KEY"] = config.get_auth_token()
-        os.environ["API_TIMEOUT_MS"] = str(config.timeout_ms)
+        # 1. 应用基础配置（使用字典驱动，消除重复代码）
+        for env_key, value_getter in self.ENV_KEY_MAPPING.items():
+            value = value_getter(config)
+            self._set_or_clear_env(env_key, value)
 
-        # Model configuration
-        self._set_or_clear_env("ANTHROPIC_MODEL", config.model)
-        self._set_or_clear_env("ANTHROPIC_SMALL_FAST_MODEL", config.small_fast_model)
-        self._set_or_clear_env("ANTHROPIC_DEFAULT_SONNET_MODEL", config.sonnet_model)
-        self._set_or_clear_env("ANTHROPIC_DEFAULT_OPUS_MODEL", config.opus_model)
-        self._set_or_clear_env("ANTHROPIC_DEFAULT_HAIKU_MODEL", config.haiku_model)
+        # 2. 清理并应用代理配置
+        self._apply_proxy_settings(config)
 
+        # 3. 应用额外环境变量
+        for key, value in config.extra_env.items():
+            os.environ[key] = value
+
+    def _apply_proxy_settings(self, config: ModelConfig):
+        """独立的代理设置应用
+
+        Args:
+            config: 模型配置
+        """
         # Clear all proxy settings first
         proxy_keys = ["https_proxy", "http_proxy", "HTTPS_PROXY", "HTTP_PROXY", "no_proxy", "NO_PROXY"]
         for key in proxy_keys:
@@ -223,10 +244,6 @@ class ConfigService:
                 logger.info(f"No proxy configured ({config.proxy_env} not set, using direct connection)")
             else:
                 logger.info("No proxy configured (direct connection)")
-
-        # Apply extra environment variables
-        for key, value in config.extra_env.items():
-            os.environ[key] = value
 
     def _set_or_clear_env(self, key: str, value: Optional[str]):
         """Set or clear environment variable."""

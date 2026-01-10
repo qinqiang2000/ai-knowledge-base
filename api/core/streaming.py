@@ -48,6 +48,31 @@ class StreamProcessor:
         self.first_message_received = False
         self.session_registered = False
 
+    async def _ensure_session_registered(self, session_id: str):
+        """确保会话已注册（消除重复逻辑）
+
+        Args:
+            session_id: 会话 ID
+        """
+        if not self.session_registered and self.session_service:
+            await self.session_service.register(session_id, self.client)
+            self.session_registered = True
+            logger.info(f"Session registered: {session_id}")
+
+    async def _emit_session_created(self, session_id: str) -> AsyncGenerator[dict, None]:
+        """发送 session_created 事件（消除重复）
+
+        Args:
+            session_id: 会话 ID
+
+        Yields:
+            SSE 格式的 session_created 消息
+        """
+        if not self.session_id_sent:
+            yield format_sse_message("session_created", {"session_id": session_id})
+            self.session_id_sent = True
+            logger.info(f"Created new session: {session_id}")
+
     async def process(self) -> AsyncGenerator[dict, None]:
         """
         Process message stream.
@@ -56,9 +81,8 @@ class StreamProcessor:
             SSE formatted message dictionaries
         """
         # If resuming session, register immediately
-        if self.request.session_id and self.session_service:
-            await self.session_service.register(self.request.session_id, self.client)
-            self.session_registered = True
+        if self.request.session_id:
+            await self._ensure_session_registered(self.request.session_id)
 
         try:
             async for msg in self.client.receive_response():
@@ -96,19 +120,13 @@ class StreamProcessor:
 
             if isinstance(msg.data, dict) and 'session_id' in msg.data:
                 self.actual_session_id = msg.data['session_id']
-                yield format_sse_message("session_created", {
-                    "session_id": self.actual_session_id
-                })
-                self.session_id_sent = True
-                logger.info(f"Created new session: {self.actual_session_id}")
+
+                # Emit session created event
+                async for sse_msg in self._emit_session_created(self.actual_session_id):
+                    yield sse_msg
 
                 # Register session
-                if self.session_service:
-                    await self.session_service.register(
-                        self.actual_session_id,
-                        self.client
-                    )
-                    self.session_registered = True
+                await self._ensure_session_registered(self.actual_session_id)
 
     async def _handle_assistant_message(self, msg: AssistantMessage) -> AsyncGenerator[dict, None]:
         """Handle assistant message."""
@@ -142,16 +160,12 @@ class StreamProcessor:
 
         # Send session_created (fallback)
         if not self.request.session_id and not self.session_id_sent:
-            yield format_sse_message("session_created", {
-                "session_id": msg.session_id
-            })
-            self.session_id_sent = True
-            logger.info(f"Created new session (from result): {msg.session_id}")
+            # Emit session created event
+            async for sse_msg in self._emit_session_created(msg.session_id):
+                yield sse_msg
 
             # Register session (fallback)
-            if not self.session_registered and self.session_service:
-                await self.session_service.register(msg.session_id, self.client)
-                self.session_registered = True
+            await self._ensure_session_registered(msg.session_id)
 
         # Send final result
         yield format_sse_message("result", {

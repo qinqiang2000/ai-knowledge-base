@@ -1,5 +1,5 @@
 """Handlers package."""
 
-from api.handlers.yunzhijia_handler import YunzhijiaHandler
+from api.handlers.yunzhijia import YunzhijiaHandler
 
 __all__ = ["YunzhijiaHandler"]
