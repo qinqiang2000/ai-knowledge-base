@@ -38,7 +38,7 @@ The service runs on `http://localhost:9090` by default (configurable via `PORT` 
 
 ### Request Flow
 
-1. **API Request** → FastAPI endpoint (`/api/customer-service/query` or `/api/query`)
+1. **API Request** → FastAPI endpoint (`/api/query` or `/yzj/chat`)
 2. **AgentService** → Builds prompt with skill and context
 3. **Claude Agent SDK** → Creates ClaudeSDKClient with:
    - System prompt: `claude_code` preset
@@ -101,8 +101,10 @@ LOG_LEVEL=INFO                    # Logging level
 
 ## API Endpoints
 
-- `GET /` - Chat UI
+- `GET /` - API service information
 - `POST /api/query` - Generic agent query (configurable skill)
-- `POST /api/customer-service/query` - Customer service specific endpoint (fixed skill)
+- `POST /api/interrupt/{session_id}` - Interrupt an ongoing session
+- `POST /yzj/chat` - Yunzhijia (云之家) chat endpoint
+- `GET /yzj/stats` - Yunzhijia session statistics
+- `GET /api/health` - Health check
 - `GET /docs` - OpenAPI documentation
-- Admin endpoints at `/admin/*` (config management, log viewing)

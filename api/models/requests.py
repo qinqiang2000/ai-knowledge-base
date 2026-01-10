@@ -72,20 +72,3 @@ class QueryRequest(BaseModel):
                 }
             ]
         }
-
-
-class CustomerServiceRequest(BaseModel):
-    """Customer service specific request model."""
-
-    tenant_id: str = Field(..., description="租户ID")
-    prompt: str = Field(..., min_length=1, description="用户请求")
-    language: str = Field(default="中文", description="响应语言")
-    session_id: Optional[str] = Field(None, description="会话ID (续会话用)")
-    context: Optional[str] = Field(None, description="附加上下文")
-
-    # Business-specific fields
-    service_type: Optional[str] = Field(
-        None,
-        description="服务类型: product_support | account_inquiry"
-    )
-    customer_id: Optional[str] = Field(None, description="客户ID")

@@ -20,10 +20,7 @@ logger = logging.getLogger(__name__)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from api.endpoints import router
-from api.customer_service import router as customer_service_router
-from api.admin import admin_router
 from api.yunzhijia import router as yunzhijia_router
 
 # Create FastAPI app
@@ -55,18 +52,22 @@ if kb_assets_path.exists():
 
 # Include API routers
 app.include_router(router)  # Generic /api endpoints
-app.include_router(customer_service_router)  # /api/customer-service endpoints
-app.include_router(admin_router)  # /admin endpoints
 app.include_router(yunzhijia_router)  # /yzj/* endpoints (云之家集成)
 
 
 @app.get("/")
 async def root():
-    """Serve the chat UI."""
-    chat_html = Path(__file__).parent / "static" / "chat.html"
-    if chat_html.exists():
-        return FileResponse(chat_html)
-    return {"message": "AI Agent Service API", "docs": "/docs"}
+    """API service root endpoint."""
+    return {
+        "service": "AI Agent Service",
+        "version": "1.0.0",
+        "status": "running",
+        "endpoints": {
+            "docs": "/docs",
+            "health": "/api/health",
+            "yunzhijia": "/yzj/chat"
+        }
+    }
 
 
 @app.on_event("startup")

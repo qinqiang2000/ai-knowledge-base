@@ -1,8 +1,7 @@
 """Data models for the AI Agent Service."""
 
-from .requests import QueryRequest, CustomerServiceRequest
+from .requests import QueryRequest
 
 __all__ = [
     'QueryRequest',
-    'CustomerServiceRequest',
 ]
