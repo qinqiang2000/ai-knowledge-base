@@ -71,8 +71,14 @@ root_logger.addHandler(console_handler)
 
 logger = logging.getLogger(__name__)
 
-# Global console
-console = Console()
+# Global console - 优化中文显示
+console = Console(
+    legacy_windows=False,  # 禁用Windows兼容模式
+    force_terminal=True,   # 强制终端模式
+    force_interactive=False,  # 非交互式渲染（减少额外样式）
+    no_color=False,        # 保留颜色
+    tab_size=4
+)
 
 
 class REPLState:
@@ -236,16 +242,16 @@ async def process_stream(agent_service, request, renderer, state):
 async def handle_command(cmd: str, state: REPLState, config_service=None) -> bool:
     """Handle special commands. Returns True to continue REPL loop."""
     if cmd in ["/q", "/quit", "/exit"]:
-        console.print("[yellow]bye bye![/yellow]")
+        print("\033[33mbye bye!\033[0m")  # 使用ANSI黄色
         return False
 
     elif cmd == "/new":
         state.clear_session()
-        console.print("[green]✓ new session started[/green]\n")
+        print("\033[32m✓ new session started\033[0m\n")  # 使用ANSI绿色
 
     elif cmd == "/sessions":
         if not state.session_history:
-            console.print("[yellow]暂无会话历史[/yellow]\n")
+            print("\033[33m暂无会话历史\033[0m\n")  # ANSI黄色
         else:
             table = Table(title="会话历史")
             table.add_column("Session ID", style="cyan")
@@ -261,17 +267,17 @@ async def handle_command(cmd: str, state: REPLState, config_service=None) -> boo
     elif cmd.startswith("/tenant "):
         tenant_id = cmd.split(maxsplit=1)[1]
         state.tenant_id = tenant_id
-        console.print(f"[green]✓ 租户ID已设置为: {tenant_id}[/green]\n")
+        print(f"\033[32m✓ 租户ID已设置为: {tenant_id}\033[0m\n")  # ANSI绿色
 
     elif cmd.startswith("/lang "):
         language = cmd.split(maxsplit=1)[1]
         state.language = language
-        console.print(f"[green]✓ 语言已设置为: {language}[/green]\n")
+        print(f"\033[32m✓ 语言已设置为: {language}\033[0m\n")  # ANSI绿色
 
     elif cmd.startswith("/skill "):
         skill = cmd.split(maxsplit=1)[1]
         state.skill = skill
-        console.print(f"[green]✓ Skill已设置为: {skill}[/green]\n")
+        print(f"\033[32m✓ Skill已设置为: {skill}\033[0m\n")  # ANSI绿色
 
     elif cmd == "/config":
         from api.constants import AGENTS_ROOT, DATA_DIR
@@ -325,8 +331,8 @@ async def handle_command(cmd: str, state: REPLState, config_service=None) -> boo
         console.print()
 
     else:
-        console.print(f"[red]未知命令: {cmd}[/red]")
-        console.print("[dim]输入 /help 查看帮助[/dim]\n")
+        print(f"\033[31m未知命令: {cmd}\033[0m")  # ANSI红色
+        print("\033[2m输入 /help 查看帮助\033[0m\n")  # ANSI暗淡
 
     return True
 
@@ -392,19 +398,19 @@ async def run_repl():
 
         except asyncio.CancelledError:
             # Interrupt during stream can cancel the prompt, just continue
-            console.print()  # New line after interrupted prompt
+            print()  # New line after interrupted prompt
             continue
 
         except KeyboardInterrupt:
-            console.print("\n[yellow](使用 /q 退出)[/yellow]\n")
+            print("\n\033[33m(使用 /q 退出)\033[0m\n")  # ANSI黄色
             continue
 
         except EOFError:
-            console.print("\n[yellow]bye bye![/yellow]")
+            print("\n\033[33mbye bye!\033[0m")  # ANSI黄色
             break
 
         except Exception as e:
-            console.print(f"[red]错误: {str(e)}[/red]\n")
+            print(f"\033[31m错误: {str(e)}\033[0m\n")  # ANSI红色
             logger.exception("REPL error")
 
 
@@ -412,5 +418,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(run_repl())
     except KeyboardInterrupt:
-        console.print("\n[yellow]interrupted[/yellow]")
+        print("\n\033[33minterrupted\033[0m")  # ANSI黄色
         sys.exit(0)
