@@ -257,7 +257,7 @@ class YunzhijiaHandler:
         # 提取 <ask> 标签（立即发送）
         asks = self.tag_extractor.extract_asks(content)
         for ask in asks:
-            ask_with_hint = f"{ask}\n\n【注】请 {robot_name} 回复"
+            ask_with_hint = f"{ask}\n\n【注】👉 请 {robot_name} 回复\n例如：{robot_name} 1"
             await self.message_sender.send_text(yzj_token, operator_openid, ask_with_hint)
             logger.info(f"[YZJ] Sent ask message")
             sent_count += 1
@@ -382,9 +382,10 @@ class YunzhijiaHandler:
 
         lines.append("")
         if robot_name:
-            lines.append(f"请选项编号或文字. 【注】不可直接回复本消息，需 {robot_name} 回复")
+            lines.append(f"【注】👉 请选项编号或文字后 {robot_name} 回复")
+            lines.append(f"例如：{robot_name} 1")
         else:
-            lines.append("请选项编号或文字. 【注】不可直接回复本消息")
+            lines.append("【注】👉 请选项编号或文字. 不可直接回复本消息")
 
         return "\n".join(lines)
 
