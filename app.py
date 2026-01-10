@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from api.endpoints import router
-from api.yunzhijia import router as yunzhijia_router
+from api.routers.agent import router
+from api.routers.yunzhijia import router as yunzhijia_router
 
 # Create FastAPI app
 app = FastAPI(

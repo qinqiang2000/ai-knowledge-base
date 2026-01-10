@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sse_starlette.sse import EventSourceResponse
-from .models.requests import QueryRequest
-from .utils.context_storage import save_context
-from .dependencies import get_agent_service, get_session_service
+from ..models.requests import QueryRequest
+from ..utils.context_storage import save_context
+from ..dependencies import get_agent_service, get_session_service
 
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ async def query_agent(request: Request):
     try:
         # Parse and validate request body
         body = await request.json()
-        
+
         try:
             query_request = QueryRequest(**body)
         except ValidationError as e:
@@ -104,7 +104,7 @@ async def query_agent(request: Request):
                     "details": errors
                 }
             )
-        
+
         # Print request body information
         request_dict = query_request.model_dump()
         # Log context partially if present (first 200 chars)
@@ -113,7 +113,7 @@ async def query_agent(request: Request):
             context_preview = log_dict["context"][:200] + "..." if len(log_dict["context"]) > 200 else log_dict["context"]
             log_dict["context"] = f"[{len(request_dict['context'])} chars] {context_preview}"
         logger.info(f"Request body: {json.dumps(log_dict, ensure_ascii=False, indent=2)}")
-        
+
         logger.info(
             f"Received query request: tenant={query_request.tenant_id}, "
             f"skill={query_request.skill}, session={query_request.session_id}"
@@ -172,6 +172,3 @@ async def interrupt_session(session_id: str):
     session_service = get_session_service()
     success = await session_service.interrupt(session_id)
     return {"success": success, "session_id": session_id}
-
-
-

@@ -4,8 +4,8 @@ import logging
 from fastapi import APIRouter, Request, Query, BackgroundTasks
 from fastapi.responses import JSONResponse
 
-from api.models.yunzhijia import YZJRobotMsg
-from api.dependencies import get_yunzhijia_handler
+from ..models.yunzhijia import YZJRobotMsg
+from ..dependencies import get_yunzhijia_handler
 
 logger = logging.getLogger(__name__)
 
