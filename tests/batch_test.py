@@ -52,7 +52,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv(PROJECT_ROOT / '.env.prod')
+load_dotenv(PROJECT_ROOT / '.env')
 
 from api.dependencies import get_agent_service
 from api.models.requests import QueryRequest

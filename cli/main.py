@@ -16,7 +16,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables FIRST (before importing project modules)
-load_dotenv('.env.prod')
+load_dotenv('.env')
 
 from cli.repl import REPLRunner
 

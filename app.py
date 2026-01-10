@@ -5,8 +5,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env.prod
-load_dotenv('.env.prod')
+# Load environment variables from .env
+load_dotenv('.env')
 
 # Configure logging BEFORE importing any modules that use logger
 log_level = os.getenv('LOG_LEVEL', 'DEBUG')
