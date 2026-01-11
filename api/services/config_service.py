@@ -42,9 +42,12 @@ class ModelConfig:
         if not proxy_url:
             return None
 
+        # Set both uppercase and lowercase for maximum compatibility
         return {
+            "HTTPS_PROXY": proxy_url,
+            "HTTP_PROXY": proxy_url,
             "https_proxy": proxy_url,
-            "http_proxy": proxy_url
+            "http_proxy": proxy_url,
         }
 
     def validate(self) -> tuple[bool, Optional[str]]:
@@ -54,12 +57,12 @@ class ModelConfig:
         Returns:
             (is_valid, error_message)
         """
-        # Check auth token
-        if not self.get_auth_token():
+        # Check auth token (skip if using SDK built-in auth, i.e. auth_token_env is empty)
+        if self.auth_token_env and not self.get_auth_token():
             return False, f"Auth token not found (env: {self.auth_token_env})"
 
-        # Check base_url format
-        if not self.base_url.startswith(("http://", "https://")):
+        # Check base_url format (empty string means use SDK default)
+        if self.base_url and not self.base_url.startswith(("http://", "https://")):
             return False, f"Invalid base_url format: {self.base_url}"
 
         return True, None
@@ -87,6 +90,15 @@ PREDEFINED_CONFIGS: Dict[str, ModelConfig] = {
             "DISABLE_TELEMETRY": "true",
             "DISABLE_COST_WARNINGS": "true"
         }
+    ),
+    "claude": ModelConfig(
+        name="claude",
+        description="Claude Official API (官方 API，使用 SDK 内置认证)",
+        base_url="",  # Use SDK default (https://api.anthropic.com)
+        auth_token_env="",  # 不设置，使用 SDK 内置认证（需先 claude login）
+        timeout_ms=600000,
+        proxy_env="CLAUDE_PROXY",  # Optional proxy for official API
+        extra_env={}
     ),
 }
 
@@ -116,7 +128,7 @@ class ConfigService:
         # Claude SDK基础配置
         "ANTHROPIC_BASE_URL": lambda c: c.base_url,
         "ANTHROPIC_AUTH_TOKEN": lambda c: c.get_auth_token(),
-        "ANTHROPIC_API_KEY": lambda c: c.get_auth_token(),
+        # "ANTHROPIC_API_KEY": lambda c: c.get_auth_token(),
         "API_TIMEOUT_MS": lambda c: str(c.timeout_ms),
 
         # 可选模型配置

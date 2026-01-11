@@ -50,6 +50,7 @@ class CommandHandler:
             "/lang": self._cmd_set_language,
             "/skill": self._cmd_set_skill,
             "/config": self._cmd_show_config,
+            "/env": self._cmd_show_env,
             "/help": self._cmd_help,
         }
 
@@ -168,6 +169,94 @@ class CommandHandler:
         console.print()
         return True
 
+    async def _cmd_show_env(self, cmd: str) -> bool:
+        """显示环境变量命令"""
+        import os
+
+        # Get environment snapshot from config_service
+        env_snapshot = {}
+        if self.config_service:
+            env_snapshot = self.config_service.get_current_env_snapshot()
+
+        # Build display table
+        table = Table(title="相关环境变量", show_header=True, header_style="bold cyan")
+        table.add_column("变量名", style="cyan", no_wrap=True)
+        table.add_column("值", style="white")
+
+        # Critical variables (always show)
+        critical_vars = [
+            ("DEFAULT_MODEL_CONFIG", os.getenv("DEFAULT_MODEL_CONFIG", "(未设置)")),
+        ]
+
+        # Model-specific auth tokens
+        auth_vars = [
+            ("CLAUDE_CODE_OAUTH_TOKEN", self._mask_token(os.getenv("CLAUDE_CODE_OAUTH_TOKEN"))),
+            ("ANTHROPIC_API_KEY", self._mask_token(os.getenv("ANTHROPIC_API_KEY"))),
+            ("ANTHROPIC_AUTH_TOKEN", self._mask_token(os.getenv("ANTHROPIC_AUTH_TOKEN"))),
+            ("GLM_AUTH_TOKEN", self._mask_token(os.getenv("GLM_AUTH_TOKEN"))),
+            ("CLAUDE_ROUTER_AUTH_TOKEN", self._mask_token(os.getenv("CLAUDE_ROUTER_AUTH_TOKEN"))),
+        ]
+
+        # Proxy settings
+        proxy_vars = [
+            ("CLAUDE_PROXY", os.getenv("CLAUDE_PROXY", "(未设置)")),
+            ("CLAUDE_ROUTER_PROXY", os.getenv("CLAUDE_ROUTER_PROXY", "(未设置)")),
+            ("https_proxy", os.getenv("https_proxy", "(未设置)")),
+            ("HTTPS_PROXY", os.getenv("HTTPS_PROXY", "(未设置)")),
+            ("http_proxy", os.getenv("http_proxy", "(未设置)")),
+            ("HTTP_PROXY", os.getenv("HTTP_PROXY", "(未设置)")),
+        ]
+
+        # Add to table
+        for var_name, var_value in critical_vars:
+            if var_value and var_value != "(未设置)":
+                table.add_row(f"[bold]{var_name}[/bold]", f"[green]{var_value}[/green]")
+
+        for var_name, var_value in auth_vars:
+            if var_value and var_value != "(未设置)":
+                table.add_row(var_name, f"[green]{var_value}[/green]")
+            else:
+                table.add_row(var_name, "[dim](未设置)[/dim]")
+
+        table.add_row("", "")  # Separator
+        for var_name, var_value in proxy_vars:
+            if var_value and var_value != "(未设置)":
+                table.add_row(var_name, f"[yellow]{var_value}[/yellow]")
+
+        console.print(table)
+
+        # Show active environment variables from config_service
+        if env_snapshot:
+            console.print("\n[bold cyan]当前生效的环境变量 (ConfigService 已设置):[/bold cyan]")
+            active_table = Table(show_header=True, header_style="bold green")
+            active_table.add_column("变量名", style="green")
+            active_table.add_column("值", style="white")
+
+            for key, value in sorted(env_snapshot.items()):
+                if "TOKEN" in key or "KEY" in key:
+                    value = self._mask_token(value)
+                active_table.add_row(key, value)
+
+            console.print(active_table)
+
+        console.print()
+        return True
+
+    def _mask_token(self, token: Optional[str]) -> str:
+        """Mask sensitive token for display.
+
+        Args:
+            token: Token to mask
+
+        Returns:
+            Masked token or "(未设置)"
+        """
+        if not token:
+            return "(未设置)"
+        if len(token) <= 10:
+            return "***"
+        return f"{token[:8]}...{token[-4:]}"
+
     async def _cmd_help(self, cmd: str) -> bool:
         """显示帮助命令"""
         help_text = """[bold]可用命令:[/bold]
@@ -178,6 +267,7 @@ class CommandHandler:
   /lang <language>    设置响应语言
   /skill <name>       设置Skill (默认: customer-service)
   /config             显示当前配置（包括工作目录）
+  /env                显示环境变量（包括代理、token等）
   /help               显示此帮助
 
 [bold]快捷键:[/bold]

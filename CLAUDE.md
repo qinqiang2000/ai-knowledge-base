@@ -9,7 +9,7 @@
 1. 通用的 `/api/query` 接口，用于程序化访问
 2. 云之家 (Yunzhijia) 消息集成，用于企业聊天
 
-系统采用多租户架构，并支持动态模型供应商切换 (GLM-4, Claude Router)。
+系统采用多租户架构，并支持动态模型供应商切换 (Claude Official API, GLM-4, Claude Router)。
 
 > Claude Router指的是[claude-code-router](https://github.com/musistudio/claude-code-router) ，简称ccr，可以将Claude Agent SDK的请求中转到其他LLM，比如: Claude Agent SDK --> ccr --> deepseek
 >
@@ -55,6 +55,12 @@ python cli.py
 ```
 
 CLI 提供了一个交互式终端，用于在不运行完整 API 服务器的情况下测试 Agent 查询。
+
+**CLI 内置命令**：
+- `/config` - 显示当前配置（模型、会话、工作目录）
+- `/env` - 显示环境变量（包括代理、token、配置等）
+- `/new` - 开始新会话
+- `/help` - 查看所有命令
 
 ### Batch Testing
 
@@ -133,6 +139,7 @@ python tests/batch_test.py -p "如何配置开票人员？" --default-product "�
 ```python
 # Defined in api/services/config_service.py
 PREDEFINED_CONFIGS = {
+    "claude": ModelConfig(...),        # Claude Official API (官方 API)
     "glm": ModelConfig(...),           # GLM-4 (智谱清言)
     "claude-router": ModelConfig(...)  # Local Claude proxy
 }
@@ -162,12 +169,16 @@ Skills 通过查询中的 `Skill` 工具调用。
 
 ```bash
 # Model provider selection
-DEFAULT_MODEL_CONFIG=claude-router  # or "glm"
+DEFAULT_MODEL_CONFIG=claude-router  # Options: "claude", "glm", "claude-router"
 
 # Model provider auth tokens
-GLM_AUTH_TOKEN=xxx
-CLAUDE_ROUTER_AUTH_TOKEN=xxx
-CLAUDE_ROUTER_PROXY=http://127.0.0.1:7890  # Optional
+CLAUDE_CODE_OAUTH_TOKEN=xxx         # Claude Official API (https://console.anthropic.com)
+GLM_AUTH_TOKEN=xxx                  # GLM-4 (智谱清言)
+CLAUDE_ROUTER_AUTH_TOKEN=xxx        # Claude Router (本地代理)
+
+# Proxy settings (optional)
+CLAUDE_PROXY=http://127.0.0.1:7890           # For Claude Official API
+CLAUDE_ROUTER_PROXY=http://127.0.0.1:7890   # For Claude Router
 
 # Service config
 PORT=9090

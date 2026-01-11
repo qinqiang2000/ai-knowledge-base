@@ -37,12 +37,13 @@ def build_initial_prompt(
     # 核心任务
     parts.append("# 任务")
     if skill:
-        parts.append(f"执行 skill: {skill}")
+        parts.append(f"严格按skill: {skill} 执行任务")
     parts.append(f"用户请求: {user_prompt}")
 
     # 上下文
     parts.append("\n# 上下文")
-    parts.append(f"租户ID: {tenant_id}")
+    if tenant_id:
+        parts.append(f"租户ID: {tenant_id}")
     parts.append(f"响应语言: {language}")
 
     if context_file_path:

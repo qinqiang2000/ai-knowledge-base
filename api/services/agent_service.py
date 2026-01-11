@@ -87,7 +87,7 @@ class AgentService:
                 yield format_sse_message("heartbeat", {"status": "connected"})
 
                 await client.query(prompt)
-                logger.info("Query sent, waiting for response...")
+                logger.info(f"Query sent: {prompt}")
                 yield format_sse_message("heartbeat", {"status": "processing"})
 
                 # Use StreamProcessor to handle message stream
