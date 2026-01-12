@@ -161,6 +161,19 @@ Skills 是从 `.claude/skills/` 加载的 Claude Code 技能。样例的技能�
   * `API文档/` - API 文档
 * 多产品消歧：当存在多个产品时，会阻断并询问用户
 
+**operational-analytics** - 运营分析 Agent
+
+* 处理 EOP（Enterprise Operation Platform，运营平台）数据库查询与分析
+* 数据库表：
+  * `t_ocm_kbc_order_settle` - 销售出库单/结算单（107K+ 记录）
+  * `t_ocm_order_header` - 交易订单主表（109K+ 记录）
+  * `t_ocm_order_lines` - 产品订单明细（114K+ 记录）
+  * `t_ocm_tenant` - 租户表（35K+ 记录）
+* 查询类型：订单查询、数据统计、趋势分析、报表生成
+* 输出格式：Markdown 表格、SQL 透明化展示
+* 安全机制：SELECT-only、表白名单、关键词黑名单、查询超时保护
+* 触发词：EOP、运营平台、订单查询、租户数据、销售统计、t_ocm_*表
+
 Skills 通过查询中的 `Skill` 工具调用。
 
 ## Key Environment Variables
@@ -190,6 +203,15 @@ YZJ_MAX_IMG_PER_CARD=5
 SERVICE_BASE_URL=http://your-public-ip:9090
 YZJ_SESSION_TIMEOUT=3600  # 60 minutes
 YZJ_VERBOSE=true  # false for concise mode
+
+# PostgreSQL Database (for operational-analytics skill)
+POSTGRES_HOST=bj-postgres-68aob3ms.sql.tencentcdb.com
+POSTGRES_PORT=22898
+POSTGRES_DATABASE=postgres
+POSTGRES_USER=agent_eop
+POSTGRES_PASSWORD=Fapiaoyun@2026
+POSTGRES_QUERY_TIMEOUT=60
+POSTGRES_ALLOWED_TABLES=t_ocm_kbc_order_settle,t_ocm_order_header,t_ocm_order_lines,t_ocm_tenant
 
 ```
 
