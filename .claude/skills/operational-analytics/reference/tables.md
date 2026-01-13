@@ -25,7 +25,7 @@
 | fbillno                   | 单据编号     |                                                              |
 | fmodifytime               | 更新时间     |                                                              |
 | fcreatetime               | 创建时间     |                                                              |
-| fkbc_settle_billno        | 关联单据编号 | 如果forder_source='金蝶中国'，则fkbc_settle_billno-->t_ocm_order_header.fthird_party_billno <br>如果forder_source='运营后台'，fkbc_settle_billno-->t_ocm_order_header.fbillno |
+| fkbc_settle_billno        | 关联单据编号 |  |
 | fproduct_serial_no        | 产品序列号   |                                                              |
 | **fsale_product_name**    | 销售产品     | 产品名称字段                                                 |
 | fversion_no               | 版本号       |                                                              |
@@ -272,5 +272,4 @@ WHERE fbiz_type = 'Standard'              -- 只统计标准付费订单
 ```
 t_ocm_order_header.fid (1) ←→ (N) t_ocm_order_lines.fentryid
 t_ocm_order_header.ftenant (N) ←→ (1) t_ocm_tenant.fid
-t_ocm_kbc_order_settle ← (复杂关联,请看对应的fkbc_settle_billno) → t_ocm_order_header
 ```

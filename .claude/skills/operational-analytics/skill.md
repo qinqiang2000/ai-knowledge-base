@@ -188,7 +188,6 @@ t_ocm_kbc_order_settle ← (复杂，不推荐) → t_ocm_order_header
 ```sql
 WHERE fbiz_type = 'Standard'              -- 只统计标准付费订单
   AND fbusiness_type != 'Upgradation'     -- 排除升级订单（不计费）
-  AND fbusiness_type != 'Return'          -- 排除退货（或单独统计）
 ```
 
 **结算表查询：**
