@@ -59,7 +59,7 @@
 | **fclassification**       | 产品分类     | 1: 开票 / 2: 收票 / 3: 影像 / 4: 增值服务 / 5: 收单机器人 / 6: 研发 / 7: 实施 |
 | fcustomer_code            | 客户编码     |                                                              |
 | fnew_or_renew             | 新购续费     | new: 新购 / renew: 续费                                      |
-| **forder_source**         | 来源         | 查询订单来自哪个下单渠道                                     |
+| **forder_source**         | 来源         | 查询订单来自哪个下单渠道。枚举值：KBC / 运营后台 / 官网下单 / 我家云 / 爱普生 / 华盟 / ICRM |
 | ftotal_quantity           | 总订购数量   |                                                              |
 | fbatchno_materialcode     | 批号物料编码 |                                                              |
 | fkbc_createdate           | KBC创建时间  |                                                              |

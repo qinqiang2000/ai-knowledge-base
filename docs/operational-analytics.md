@@ -162,8 +162,7 @@ operational-analytics/
     ├── __init__.py
     ├── db_connector.py         # 数据库连接工具
     ├── query_executor.py       # SQL 执行器
-    ├── result_formatter.py     # 结果格式化
-    └── test_connection.py      # 连接测试脚本
+    └── result_formatter.py     # 结果格式化
 ```
 
 ## 安全机制
