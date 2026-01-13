@@ -193,6 +193,17 @@ class YunzhijiaHandler:
                     logger.info(f"[YZJ] Sent question #{message_count}")
 
             elif event_type == "result":
+                result_data = json.loads(event.get("data", "{}"))
+
+                # Fallback: 如果 reply_buffer 为空，使用 ResultMessage.result 字段
+                if not reply_buffer and result_data.get("result"):
+                    sdk_result = result_data["result"]
+                    logger.warning(
+                        f"[YZJ] Fallback: using ResultMessage.result field "
+                        f"({len(sdk_result)} chars, no <reply> tags found)"
+                    )
+                    reply_buffer.append(sdk_result)
+
                 # 发送累积的 reply 内容
                 for idx, reply in enumerate(reply_buffer):
                     message_count += 1
@@ -210,7 +221,6 @@ class YunzhijiaHandler:
                         )
                     logger.info(f"[YZJ] Sent reply #{message_count}")
 
-                result_data = json.loads(event.get("data", "{}"))
                 logger.info(
                     f"[YZJ] Completed: session={result_data.get('session_id')}, "
                     f"duration={result_data.get('duration_ms')}ms, "

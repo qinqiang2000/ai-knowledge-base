@@ -167,13 +167,20 @@ class StreamProcessor:
             # Register session (fallback)
             await self._ensure_session_registered(msg.session_id)
 
-        # Send final result
-        yield format_sse_message("result", {
+        # Send final result with result field
+        result_data = {
             "session_id": msg.session_id,
             "duration_ms": msg.duration_ms,
             "is_error": msg.is_error,
             "num_turns": msg.num_turns
-        })
+        }
+
+        # Include result field if present (SDK final output)
+        if msg.result:
+            result_data["result"] = msg.result
+            logger.info(f"ResultMessage.result field present: {len(msg.result)} chars")
+
+        yield format_sse_message("result", result_data)
 
         logger.info(
             f"Session {msg.session_id} completed: "
