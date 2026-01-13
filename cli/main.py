@@ -6,8 +6,10 @@ Usage:
     python -m cli.main
     或
     python cli/main.py
+    python cli/main.py -s operational-analytics  # 指定skill
 """
 
+import argparse
 import asyncio
 import logging
 import sys
@@ -21,7 +23,7 @@ load_dotenv('.env')
 from cli.repl import REPLRunner
 
 # Configure logging
-log_dir = Path(__file__).parent.parent / "logs"
+log_dir = Path(__file__).parent.parent / "log"
 log_dir.mkdir(exist_ok=True)
 
 # 配置根logger
@@ -51,10 +53,26 @@ root_logger.addHandler(file_handler)
 root_logger.addHandler(console_handler)
 
 
+def parse_args():
+    """解析命令行参数"""
+    parser = argparse.ArgumentParser(
+        description='AI Agent Service - Interactive CLI Debug Tool',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        '-s', '--skill',
+        type=str,
+        default='customer-service',
+        help='指定要使用的skill名称 (默认: customer-service)'
+    )
+    return parser.parse_args()
+
+
 def main():
     """主函数"""
     try:
-        repl = REPLRunner()
+        args = parse_args()
+        repl = REPLRunner(skill=args.skill)
         asyncio.run(repl.run())
     except KeyboardInterrupt:
         print("\n\033[33minterrupted\033[0m")

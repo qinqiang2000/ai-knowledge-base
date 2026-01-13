@@ -44,7 +44,7 @@ pip install -r requirements.txt
 
 ```
 
-服务默认运行在 9090 端口（可通过 `PORT` 环境变量配置）。日志位于 `logs/app.log`。
+服务默认运行在 9090 端口（可通过 `PORT` 环境变量配置）。日志位于 `log/app.log`。
 
 ### CLI Debug Tool
 
@@ -246,8 +246,8 @@ POSTGRES_ALLOWED_TABLES=t_ocm_kbc_order_settle,t_ocm_order_header,t_ocm_order_li
 
 * `AGENTS_ROOT` = 项目根目录 (Claude SDK 的工作目录，可配置)
 * 本地数据在 `data`（可配置）
-* 日志位于 `logs/app.log` (重启时轮转)
-* CLI 日志位于 `logs/cli.log`
+* 日志位于 `log/app.log` (重启时轮转)
+* CLI 日志位于 `log/cli.log`
 * 测试结果位于 `tests/results/`
 
 ## Concurrency & Thread Safety

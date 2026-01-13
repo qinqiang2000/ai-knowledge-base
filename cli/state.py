@@ -9,11 +9,16 @@ from api.models.requests import QueryRequest
 class REPLState:
     """REPL state management."""
 
-    def __init__(self):
+    def __init__(self, skill: str = "customer-service"):
+        """初始化REPL状态
+
+        Args:
+            skill: 要使用的skill名称，默认为 customer-service
+        """
         self.session_id: Optional[str] = None
         self.tenant_id: str = "cli-debug"
         self.language: str = "中文"
-        self.skill: str = "customer-service"  # 默认使用客服skill
+        self.skill: str = skill
         self.session_history: list = []
 
     def build_request(self, prompt: str) -> QueryRequest:

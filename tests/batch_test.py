@@ -58,7 +58,7 @@ from api.dependencies import get_agent_service
 from api.models.requests import QueryRequest
 
 # 配置日志 - 分离文件日志和控制台输出
-log_dir = PROJECT_ROOT / "logs"
+log_dir = PROJECT_ROOT / "log"
 log_dir.mkdir(exist_ok=True)
 
 # 配置根logger

@@ -7,6 +7,7 @@ The actual implementation is in the cli/ package.
 
 Usage:
     python cli.py
+    python cli.py -s operational-analytics  # 指定skill
 """
 
 from cli.main import main

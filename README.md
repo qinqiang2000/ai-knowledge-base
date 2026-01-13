@@ -77,7 +77,7 @@ PORT=9090
 - API 文档: http://localhost:9090/docs
 - 健康检查: http://localhost:9090/api/health
 
-日志文件位于 `logs/app.log`。
+日志文件位于 `log/app.log`。
 
 ## 开发工具
 
@@ -90,7 +90,7 @@ source .venv/bin/activate
 python cli.py
 ```
 
-CLI 日志保存在 `logs/cli.log`。
+CLI 日志保存在 `log/cli.log`。
 
 ### 批量测试
 
@@ -238,8 +238,8 @@ YZJ_VERBOSE=true  # false 为简洁模式
 
 - `AGENTS_ROOT` = 项目根目录（Claude SDK 的工作目录，可配置）
 - 本地数据在 `data`（可配置）
-- 日志位于 `logs/app.log`（重启时轮转）
-- CLI 日志位于 `logs/cli.log`
+- 日志位于 `log/app.log`（重启时轮转）
+- CLI 日志位于 `log/cli.log`
 - 测试结果位于 `tests/results/`
 
 ## 更多文档

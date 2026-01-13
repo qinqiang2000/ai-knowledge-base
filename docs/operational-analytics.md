@@ -280,7 +280,7 @@ WHERE ...
 
 查看日志中的查询执行时间：
 ```bash
-tail -f logs/app.log | grep "Query executed"
+tail -f log/app.log | grep "Query executed"
 ```
 
 ## 故障排查

@@ -29,7 +29,7 @@ console = Console(
 )
 
 # Log directory
-LOG_DIR = Path(__file__).parent.parent / "logs"
+LOG_DIR = Path(__file__).parent.parent / "log"
 LOG_DIR.mkdir(exist_ok=True)
 
 
@@ -108,11 +108,15 @@ class REPLRunner:
     封装 REPL 主循环逻辑。
     """
 
-    def __init__(self):
-        """初始化 REPL 运行器"""
+    def __init__(self, skill: str = "customer-service"):
+        """初始化 REPL 运行器
+
+        Args:
+            skill: 要使用的skill名称
+        """
         self.agent_service = get_agent_service()
         self.config_service = get_config_service()
-        self.state = REPLState()
+        self.state = REPLState(skill=skill)
         self.renderer = StreamRenderer()
         self.command_handler = CommandHandler(self.state, self.config_service)
 
@@ -124,7 +128,7 @@ class REPLRunner:
         console.print(Panel.fit(
             "[bold cyan]AI Agent CLI 调试工具[/bold cyan]\n"
             f"[green]模型配置:[/green] {current_model} ({model_config.description})\n"
-            f"[green]模式:[/green] 客服助手 (customer-service)\n"
+            f"[green]Skill:[/green] {self.state.skill}\n"
             "输入 /help 查看帮助，/config 查看配置，/q 退出",
             border_style="blue"
         ))
