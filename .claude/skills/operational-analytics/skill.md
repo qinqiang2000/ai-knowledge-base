@@ -149,6 +149,12 @@ options:
     description: "fstandard_amount (订单表)"
 ```
 
+**🛑 调用 AskUserQuestion 后，立即停止执行 🛑**
+   - **DO NOT** 调用任何其他工具（Glob、Grep、Read 等）
+   - **DO NOT** 继续搜索或准备数据
+   - **WAIT** 用户回答会在下一轮对话中返回
+   - 用户回答后，再根据答案搜索对应产品的文档
+
 **NEVER**：
 - 直接输出问题让用户选择（必须用 AskUserQuestion 工具）
 - 在不确定时猜测用户意图
