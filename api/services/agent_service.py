@@ -10,7 +10,7 @@ from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
 from api.models.requests import QueryRequest
 from api.core.streaming import StreamProcessor
 from api.utils import build_initial_prompt, format_sse_message
-from api.constants import AGENTS_ROOT
+from api.constants import AGENTS_ROOT, DATA_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class AgentService:
                 allowed_tools=["Skill", "Read", "Grep", "Glob", "Bash", "WebFetch", "WebSearch", "AskUserQuestion"],
                 resume=request.session_id,
                 max_buffer_size=10 * 1024 * 1024,
-                cwd=str(AGENTS_ROOT),
+                cwd=str(DATA_DIR),
                 add_dirs=[]
             )
 
