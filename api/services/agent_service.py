@@ -75,7 +75,7 @@ class AgentService:
                 allowed_tools=["Skill", "Read", "Grep", "Glob", "Bash", "WebFetch", "WebSearch", "AskUserQuestion"],
                 resume=request.session_id,
                 max_buffer_size=10 * 1024 * 1024,
-                cwd=str(DATA_DIR),
+                cwd=str(AGENTS_ROOT),
                 add_dirs=[]
             )
 
