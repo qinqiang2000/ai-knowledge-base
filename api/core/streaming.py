@@ -1,6 +1,7 @@
 """Claude SDK streaming response processor."""
 
 import logging
+from pathlib import Path
 from typing import AsyncGenerator, Optional
 from claude_agent_sdk import (
     ClaudeSDKClient,
@@ -47,6 +48,7 @@ class StreamProcessor:
         self.actual_session_id = request.session_id
         self.first_message_received = False
         self.session_registered = False
+        self.kb_files_read: dict[str, str] = {}  # {文件名: 完整路径} 用于 kb:// 链接修正
 
     async def _ensure_session_registered(self, session_id: str):
         """确保会话已注册（消除重复逻辑）
@@ -137,6 +139,25 @@ class StreamProcessor:
             elif isinstance(block, ToolUseBlock):
                 logger.info(f"[Tool] {block.name} - Input: {block.input}")
 
+                # 追踪 Read 工具读取的 KB 文件
+                if block.name == "Read":
+                    file_path = block.input.get("file_path", "")
+                    if "data/kb/" in file_path:
+                        from api.utils.filename_normalizer import normalize_filename
+
+                        kb_relative = file_path.split("data/kb/")[-1]
+                        filename = Path(kb_relative).name
+
+                        # 存储原始文件名
+                        self.kb_files_read[filename] = kb_relative
+                        logger.debug(f"[KB Track] {filename} -> {kb_relative}")
+
+                        # 同时存储规范化文件名（如果不同）
+                        normalized = normalize_filename(filename)
+                        if normalized != filename:
+                            self.kb_files_read[normalized] = kb_relative
+                            logger.debug(f"[KB Track] Normalized: {normalized} -> {kb_relative}")
+
                 # Extract and emit todos
                 if block.name == "TodoWrite":
                     todos = extract_todos_from_tool(block)
@@ -177,10 +198,12 @@ class StreamProcessor:
 
         # Include result field if present (SDK final output)
         if msg.result:
-            # 转换 kb:// 链接为真实 URL
+            # 转换 kb:// 链接为真实 URL（基于追踪的文件路径）
             from api.utils.kb_link_resolver import transform_kb_links
-            result_data["result"] = transform_kb_links(msg.result)
+            result_data["result"] = transform_kb_links(msg.result, self.kb_files_read)
             logger.info(f"ResultMessage.result field present: {len(msg.result)} chars")
+            if self.kb_files_read:
+                logger.info(f"[KB Track] Total files tracked: {len(self.kb_files_read)}")
 
         yield format_sse_message("result", result_data)
 
