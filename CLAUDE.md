@@ -41,10 +41,6 @@ pip install -r requirements.txt
 # Restart (default)
 ./run.sh
 ./run.sh restart
-
-# Start with colored logs (useful for tail -f log/app.log)
-FORCE_COLOR=1 ./run.sh start
-
 ```
 
 ### Model Configuration

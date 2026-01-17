@@ -11,16 +11,7 @@ description: 作为发票云客服Agent，负责回答售前咨询（产品能�
 
 **当探索发现"多产品各有实现"时，MUST 执行以下操作：**
 1. **立即停止** - 不得搜索/读取任何产品的详细文档
-2. **使用 AskUserQuestion 工具询问用户**：
-   ```
-   question: "请问您使用的是哪个产品？"
-   header: "产品选择"
-   options:
-     - label: "星瀚旗舰版发票云"
-     - label: "星空旗舰版发票云"
-     - label: "标准版发票云"
-     - label: "其他"
-   ```
+2. **使用 AskUserQuestion 工具询问用户使用的产品**
 3. **🛑 调用 AskUserQuestion 后，立即停止执行 🛑**
    - **DO NOT** 调用任何其他工具（Glob、Grep、Read 等）
    - **DO NOT** 继续搜索或准备数据
@@ -171,19 +162,7 @@ description: 作为发票云客服Agent，负责回答售前咨询（产品能�
 
 #### 询问用户示例
 
-使用 `AskUserQuestion` 工具：
-```
-Use AskUserQuestion tool with:
-question: "请问您使用的是哪个产品？"
-header: "产品选择"
-options:
-  - label: "标准版发票云"
-    description: "AWS商家平台版本"
-  - label: "星瀚旗舰版"
-    description: "旗舰版发票云"
-  - label: "星空旗舰版"
-    description: "For星空旗舰版"
-```
+使用 `AskUserQuestion` 工具询问用户使用的产品，根据实际情况动态生成选项。
 
 ---
 
