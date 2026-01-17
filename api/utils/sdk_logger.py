@@ -22,6 +22,13 @@ class Colors:
 
 def _should_use_colors() -> bool:
     """Check if colored output should be enabled"""
+    # Check environment variable first
+    force_color = os.getenv('FORCE_COLOR', '').lower()
+    if force_color in ('1', 'true', 'yes', 'on'):
+        return True
+    elif force_color in ('0', 'false', 'no', 'off'):
+        return False
+
     # Auto-detect: use colors if stderr is a TTY
     return sys.stderr.isatty()
 
