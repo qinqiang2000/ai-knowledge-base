@@ -25,5 +25,6 @@ def format_sse_message(event_type: str, data: Any) -> Dict[str, str]:
 
     # Explicitly convert to JSON to ensure proper formatting
     ret = {"event": event_type, "data": json.dumps(data_dict, ensure_ascii=False)}
-    logger.info(f"format_sse_message: {ret}")
+    # Log only at DEBUG level to reduce noise
+    logger.debug(f"SSE: {event_type}")
     return ret

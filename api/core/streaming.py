@@ -14,6 +14,7 @@ from claude_agent_sdk import (
 
 from api.models.requests import QueryRequest
 from api.utils import format_sse_message, extract_todos_from_tool
+from api.utils.sdk_logger import SDKLogger
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class StreamProcessor:
         self.first_message_received = False
         self.session_registered = False
         self.kb_files_read: dict[str, str] = {}  # {文件名: 完整路径} 用于 kb:// 链接修正
+        self.sdk_logger = SDKLogger(logger)  # Enhanced SDK message logger
 
     async def _ensure_session_registered(self, session_id: str):
         """确保会话已注册（消除重复逻辑）
@@ -115,7 +117,7 @@ class StreamProcessor:
 
     async def _handle_system_message(self, msg: SystemMessage) -> AsyncGenerator[dict, None]:
         """Handle system message."""
-        logger.debug(f"SystemMessage: subtype={getattr(msg, 'subtype', None)}")
+        self.sdk_logger.log_system_message(msg)
 
         if (hasattr(msg, 'subtype') and msg.subtype == 'init'
             and not self.request.session_id and not self.session_id_sent):
@@ -134,10 +136,11 @@ class StreamProcessor:
         """Handle assistant message."""
         for block in msg.content:
             if isinstance(block, TextBlock):
+                self.sdk_logger.log_text_block(block)
                 yield format_sse_message("assistant_message", block.text)
 
             elif isinstance(block, ToolUseBlock):
-                logger.info(f"[Tool] {block.name} - Input: {block.input}")
+                self.sdk_logger.log_tool_use(block)
 
                 # 追踪 Read 工具读取的 KB 文件
                 if block.name == "Read":
@@ -201,13 +204,10 @@ class StreamProcessor:
             # 转换 kb:// 链接为真实 URL（基于追踪的文件路径）
             from api.utils.kb_link_resolver import transform_kb_links
             result_data["result"] = transform_kb_links(msg.result, self.kb_files_read)
-            logger.info(f"ResultMessage.result field present: {len(msg.result)} chars")
             if self.kb_files_read:
-                logger.info(f"[KB Track] Total files tracked: {len(self.kb_files_read)}")
+                logger.debug(f"[KB Track] Total files tracked: {len(self.kb_files_read)}")
 
         yield format_sse_message("result", result_data)
 
-        logger.info(
-            f"Session {msg.session_id} completed: "
-            f"duration={msg.duration_ms}ms, turns={msg.num_turns}, error={msg.is_error}"
-        )
+        # Log result message with enhanced formatting
+        self.sdk_logger.log_result_message(msg)
