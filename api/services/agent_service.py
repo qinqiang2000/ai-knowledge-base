@@ -1,6 +1,7 @@
 """Agent business logic service."""
 
 import asyncio
+import json
 import logging
 from typing import Optional, AsyncGenerator
 from pathlib import Path
@@ -32,6 +33,20 @@ class AgentService:
             session_service: Session service (dependency injection, default None = not used)
         """
         self.session_service = session_service
+
+        # 创建安全配置文件
+        security_settings = {
+            "permissions": {
+                "deny": [
+                    "Read(./.env)",
+                    "Read(./.env.*)",
+                    "Read(./secrets/**)"
+                ]
+            }
+        }
+        settings_file = AGENTS_ROOT / ".claude_settings.json"
+        with open(settings_file, "w") as f:
+            json.dump(security_settings, f, indent=2)
 
     async def process_query(
         self,
@@ -72,6 +87,7 @@ class AgentService:
                 model="claude-sonnet-4-5",
                 system_prompt={"type": "preset", "preset": "claude_code"},
                 setting_sources=["project"],
+                settings=str(AGENTS_ROOT / ".claude_settings.json"),
                 allowed_tools=["Skill", "Read", "Grep", "Glob", "Bash", "WebFetch", "WebSearch", "AskUserQuestion"],
                 resume=request.session_id,
                 max_buffer_size=10 * 1024 * 1024,
