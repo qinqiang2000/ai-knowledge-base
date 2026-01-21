@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from api.routers.agent import router
 from api.routers.yunzhijia import router as yunzhijia_router
-from api.constants import DATA_DIR
+from api.constants import DATA_DIR, AGENT_CWD
 
 # Create FastAPI app
 app = FastAPI(
@@ -77,7 +77,8 @@ async def startup_event():
     from api.dependencies import get_config_service
 
     logger.info("Starting AI Agent Service")
-    logger.info(f"Working directory: {Path.cwd()}")
+    logger.info(f"Python process directory: {Path.cwd()}")
+    logger.info(f"Agent working directory: {AGENT_CWD}")
 
     config_service = get_config_service()
     current_config = config_service.get_current_config()
