@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""KB 链接生成工具 - 将 KB 文件路径转换为 markdown 链接
+"""KB 链接生成工具 - 读取 KB 文件第一行的 markdown 链接
 
 Usage:
     # 支持多种路径格式，脚本自动处理
@@ -19,7 +19,6 @@ Output:
 """
 import sys
 from pathlib import Path
-import yaml
 
 # KB 根目录（相对于 agent_cwd）
 KB_BASE = Path(__file__).parent.parent.parent.parent.parent / "data" / "kb"
@@ -37,7 +36,7 @@ def normalize_path(path: str) -> str:
     return path
 
 def get_kb_link(input_path: str) -> str:
-    """读取 KB 文件的 frontmatter，返回 [title](url) 格式的链接
+    """读取 KB 文件第一行的 markdown 链接，返回 [title](url) 格式
 
     Best Practice: "Solve, don't punt" - 处理所有错误情况，返回有意义的结果
     """
@@ -51,30 +50,20 @@ def get_kb_link(input_path: str) -> str:
         return filename
 
     try:
-        content = file_path.read_text(encoding='utf-8')
+        # 只读取第一行
+        with open(file_path, 'r', encoding='utf-8') as f:
+            first_line = f.readline().strip()
 
         # 获取文件名作为默认标题
         default_title = Path(relative_path).stem
 
-        # 尝试解析 YAML frontmatter
-        if content.startswith('---'):
-            end = content.find('---', 3)
-            if end != -1:
-                try:
-                    frontmatter = yaml.safe_load(content[3:end])
-                    if frontmatter:
-                        title = frontmatter.get('title', default_title)
-                        url = frontmatter.get('url')
-                        if url:
-                            return f"[{title}]({url})"
-                        # 有 frontmatter 但没有 url，返回带标题的纯文本
-                        print(f"⚠️ 文件缺少 url 字段: {input_path}", file=sys.stderr)
-                        return title
-                except yaml.YAMLError:
-                    pass
+        # 检查第一行是否是 Markdown 链接格式 [title](url)
+        if first_line and first_line.startswith('[') and '](' in first_line and first_line.endswith(')'):
+            # 直接返回第一行的 Markdown 链接
+            return first_line
 
-        # 无有效 frontmatter，返回文件名
-        print(f"⚠️ 文件缺少有效的 YAML frontmatter: {input_path}", file=sys.stderr)
+        # 第一行不是有效的 Markdown 链接，返回文件名
+        print(f"⚠️ 文件第一行不是有效的 Markdown 链接格式: {input_path}", file=sys.stderr)
         return default_title
 
     except Exception as e:
