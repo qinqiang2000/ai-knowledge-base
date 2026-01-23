@@ -163,11 +163,23 @@ start_service() {
 
     # Start the service in background
     print_info "Starting uvicorn server..."
-    setsid nohup uvicorn "$APP_MODULE" \
-        --host "$HOST" \
-        --port "$PORT" \
-        --reload \
-        > "$LOG_FILE" 2>&1 < /dev/null &
+
+    # Detect OS and use setsid on Linux, skip on macOS
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux: use setsid for proper process group management
+        setsid nohup uvicorn "$APP_MODULE" \
+            --host "$HOST" \
+            --port "$PORT" \
+            --reload \
+            > "$LOG_FILE" 2>&1 < /dev/null &
+    else
+        # macOS/BSD: setsid not available, use nohup alone
+        nohup uvicorn "$APP_MODULE" \
+            --host "$HOST" \
+            --port "$PORT" \
+            --reload \
+            > "$LOG_FILE" 2>&1 < /dev/null &
+    fi
 
     local pid=$!
     disown

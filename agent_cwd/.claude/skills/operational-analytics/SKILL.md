@@ -10,6 +10,10 @@ description: |
 
 根据自然语言查询 EOP 数据库，生成 SQL 并返回结果。
 
+> **CRITICAL: 此数据库为 PostgreSQL，禁止使用 MySQL 语法（如 YEAR()、MONTH() 等函数）**
+>
+> 日期提取使用 `EXTRACT(YEAR FROM field)`，时间过滤使用字符串比较 `>= '2024-01-01'`
+
 ---
 
 ## 查询工具
@@ -168,6 +172,21 @@ options:
 **NEVER**：
 - 直接输出问题让用户选择（必须用 AskUserQuestion 工具）
 - 在不确定时猜测用户意图
+
+### CRITICAL: 最终输出规范
+
+**直接输出面向用户的内容：**
+
+**MUST**：
+- 直接输出最终答案，无需特殊标签包装
+- SDK 会自动将你的输出包装到 `ResultMessage.result` 字段中
+- 内容会在 Agent 完成时一次性返回给用户
+- **任务完成后必须有直接文本输出**，不能以工具调用（如 TodoWrite）结束
+
+**NEVER**：
+- 以 TodoWrite 或其他工具调用作为最后一个动作
+- 假设用户能从工具调用中获取答案
+- 在调用 AskUserQuestion 后继续输出内容
 
 ### 输出格式
 

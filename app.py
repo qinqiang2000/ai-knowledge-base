@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from api.routers.agent import router
 from api.routers.yunzhijia import router as yunzhijia_router
+from api.constants import DATA_DIR, AGENT_CWD
 
 # Create FastAPI app
 app = FastAPI(
@@ -45,10 +46,10 @@ if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 # Mount knowledge base assets for image access
-kb_assets_path = Path(__file__).parent / "data" / "kb" / "产品与交付知识" / "assets"
+kb_assets_path = DATA_DIR / "kb" / "产品与交付知识" / "assets"
 if kb_assets_path.exists():
     app.mount("/kb/assets", StaticFiles(directory=str(kb_assets_path)), name="kb_assets")
-    logger.info(f"Mounted KB assets at /kb/assets")
+    logger.info(f"Mounted KB assets at /kb/assets -> {kb_assets_path}")
 
 # Include API routers
 app.include_router(router)  # Generic /api endpoints
@@ -76,7 +77,8 @@ async def startup_event():
     from api.dependencies import get_config_service
 
     logger.info("Starting AI Agent Service")
-    logger.info(f"Working directory: {Path.cwd()}")
+    logger.info(f"Python process directory: {Path.cwd()}")
+    logger.info(f"Agent working directory: {AGENT_CWD}")
 
     config_service = get_config_service()
     current_config = config_service.get_current_config()
