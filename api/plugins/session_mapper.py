@@ -6,7 +6,7 @@ Maps external platform session IDs to internal agent session IDs with timeout ma
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ class SessionInfo:
 
     agent_session_id: str
     last_active: float
+    pending_questions: Optional[list] = None  # AskUserQuestion awaiting reply
 
 
 class PluginSessionMapper:
@@ -74,6 +75,33 @@ class PluginSessionMapper:
             agent_session_id=agent_session_id,
             last_active=time.time(),
         )
+
+    def set_pending_questions(self, external_session_id: str, questions: list) -> None:
+        """Store pending AskUserQuestion questions for a session.
+
+        Args:
+            external_session_id: External platform session ID
+            questions: List of question dicts from AskUserQuestion
+        """
+        if external_session_id in self.session_map:
+            self.session_map[external_session_id].pending_questions = questions
+
+    def get_and_clear_pending_questions(self, external_session_id: str) -> Optional[list]:
+        """Get and clear pending questions for a session.
+
+        Args:
+            external_session_id: External platform session ID
+
+        Returns:
+            List of pending questions, or None if no pending questions
+        """
+        if external_session_id not in self.session_map:
+            return None
+
+        questions = self.session_map[external_session_id].pending_questions
+        if questions:
+            self.session_map[external_session_id].pending_questions = None
+        return questions
 
     def cleanup_expired(self) -> None:
         """Remove all expired sessions."""

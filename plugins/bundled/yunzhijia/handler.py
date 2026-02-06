@@ -99,9 +99,16 @@ class YunzhijiaHandler:
             # 5. 清理消息内容
             cleaned_content = self._clean_content(msg.content)
 
-            # 6. 构建请求
+            # 6. 构建请求（检查是否有待回答的问题）
+            prompt = cleaned_content
+            if agent_session_id:
+                pending_questions = self.session_mapper.get_and_clear_pending_questions(yzj_session_id)
+                if pending_questions:
+                    prompt = self._build_answer_prompt(cleaned_content, pending_questions)
+                    logger.info(f"[YZJ] Enriched prompt with pending question context")
+
             request = QueryRequest(
-                prompt=cleaned_content,
+                prompt=prompt,
                 skill=effective_skill,
                 tenant_id="yzj",
                 language="中文",
@@ -153,6 +160,9 @@ class YunzhijiaHandler:
                 has_sent_question = True
                 data = json.loads(event["data"])
                 questions = data.get("questions", [])
+
+                # Store questions for resume context
+                self.session_mapper.set_pending_questions(yzj_session_id, questions)
 
                 for question in questions:
                     formatted_message = self._format_question(question, robot_name)
@@ -256,6 +266,36 @@ class YunzhijiaHandler:
                 logger.info(f"[YZJ] FAQ matched: '{cleaned}' -> '{faq_answer}'")
                 return faq_answer
         return None
+
+    def _build_answer_prompt(self, user_reply: str, questions: list) -> str:
+        """Build enriched prompt that includes the question context for the user's reply.
+
+        Args:
+            user_reply: User's raw reply (e.g. "2")
+            questions: Original AskUserQuestion questions list
+
+        Returns:
+            Enriched prompt with question context
+        """
+        parts = []
+        for question in questions:
+            question_text = question.get("question", "")
+            options = question.get("options", [])
+
+            parts.append(f"上一轮你使用 AskUserQuestion 向用户提问: {question_text}")
+            if options:
+                parts.append("选项:")
+                for i, option in enumerate(options, 1):
+                    label = option.get("label", "")
+                    description = option.get("description", "")
+                    if description:
+                        parts.append(f"  {i}. {label} - {description}")
+                    else:
+                        parts.append(f"  {i}. {label}")
+
+        parts.append(f"\n用户回答: {user_reply}")
+        parts.append("请根据用户的回答继续处理。")
+        return "\n".join(parts)
 
     def _format_question(self, question: dict, robot_name: Optional[str] = None) -> str:
         """将 AskUserQuestion 格式化为云之家可读的文本"""
