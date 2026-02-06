@@ -1,0 +1,13 @@
+{
+  "enabled": ["yunzhijia"],
+  "plugins": {
+    "yunzhijia": {
+      "session_timeout": 1800,
+      "default_skill": "customer-service",
+      "card_template_id": "64d08cb4e4b07ba2b112b395",
+      "max_img_per_card": 5,
+      "service_base_url": "http://129.226.88.226:9090",
+      "verbose": false
+    }
+  }
+}

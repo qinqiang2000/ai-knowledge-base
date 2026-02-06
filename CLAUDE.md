@@ -28,6 +28,9 @@ Skills 位于 `agent_cwd/.claude/skills/`，详见各技能的 SKILL.md。
 - `AGENT_CWD` 环境变量指定 Agent 工作目录（默认 `agent_cwd/`）
 - Skills: `agent_cwd/.claude/skills/`
 - 知识库: `agent_cwd/data/kb/`
+- 插件系统: `api/plugins/`（核心）、`plugins/bundled/`（内置）、`plugins/installed/`（用户安装）
+- 插件配置: `plugins/config.json`
+- 插件 CLI: `python manage_plugins.py list|info|enable|disable|install|doctor`
 
 ## 注意事项
 

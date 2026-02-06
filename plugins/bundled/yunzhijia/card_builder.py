@@ -16,33 +16,11 @@ class YunzhijiaCardBuilder:
     """
 
     def __init__(self, template_id: str, max_img_per_card: int):
-        """初始化卡片构建器
-
-        Args:
-            template_id: 云之家卡片模板 ID
-            max_img_per_card: 每个卡片最大图片数量
-        """
         self.template_id = template_id
         self.max_img_per_card = max_img_per_card
 
     def build_card_payloads(self, img_urls: List[str], openid: str) -> List[dict]:
-        """构建卡片消息载荷列表
-
-        将图片列表拆分成多个卡片（如果超过单卡最大图片数）。
-
-        Args:
-            img_urls: 图片 URL 列表
-            openid: 接收人 OpenID
-
-        Returns:
-            卡片消息载荷列表
-
-        Examples:
-            >>> builder = YunzhijiaCardBuilder("template123", max_img_per_card=3)
-            >>> payloads = builder.build_card_payloads(["url1", "url2", "url3", "url4"], "user123")
-            >>> len(payloads)
-            2  # 4张图片需要2个卡片
-        """
+        """构建卡片消息载荷列表"""
         if not img_urls or not self.template_id:
             logger.warning("[CardBuilder] No images or template not configured")
             return []
@@ -54,7 +32,7 @@ class YunzhijiaCardBuilder:
         for i in range(card_num):
             data_content = self._build_data_content(img_urls, i)
             payload = {
-                "msgType": 2,  # 卡片消息
+                "msgType": 2,
                 "param": {
                     "baseInfo": {
                         "templateId": self.template_id,
@@ -69,21 +47,7 @@ class YunzhijiaCardBuilder:
         return payloads
 
     def _build_data_content(self, img_urls: List[str], card_index: int) -> dict:
-        """构建单个卡片的 data_content
-
-        云之家卡片格式：
-        - bigImageUrl: 第一张图片
-        - bigImage1Url: 第二张图片
-        - bigImage2Url: 第三张图片
-        - ...
-
-        Args:
-            img_urls: 图片 URL 列表
-            card_index: 当前卡片索引
-
-        Returns:
-            卡片数据字典
-        """
+        """构建单个卡片的 data_content"""
         data_content = {}
         start_idx = card_index * self.max_img_per_card
         end_idx = min(start_idx + self.max_img_per_card, len(img_urls))
